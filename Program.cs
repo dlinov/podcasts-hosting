@@ -15,11 +15,6 @@ builder.Services.AddDefaultIdentity<IdentityUser>()
 
 builder.Services.AddControllersWithViews();
 
-builder.Services.Configure<FormOptions>(options =>
-{
-    options.MultipartBodyLengthLimit = 2L * 1024 * 1024 * 1024; // 2000 GB
-});
-
 var app = builder.Build();
 
 // Apply migrations automatically
