@@ -36,7 +36,7 @@ public class HomeController : Controller
 
     public async Task<IActionResult> Index()
     {
-        return View(new AudioModelsViewModel(await _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync()));
+        return View();
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
@@ -45,14 +45,23 @@ public class HomeController : Controller
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
 
+    [Authorize]
+    public async Task<IActionResult> Upload()
+    {
+        var allAudios = await _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync();
+        return View(new AudioModelsViewModel(allAudios));
+    }
+
     [HttpPost]
     [Authorize]
+    [RequestSizeLimit(2L * 1024 * 1024 * 1024)]
     public async Task<IActionResult> Upload(IFormFile file, string customTitle)
     {
+        var allAudios = await _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync();
         if (file == null || file.Length == 0)
         {
             ModelState.AddModelError("File", "Please upload a file.");
-            return RedirectToAction("Index");
+            return View(new AudioModelsViewModel(allAudios));
         }
 
         var user = await _userManager.GetUserAsync(User);
@@ -60,37 +69,46 @@ public class HomeController : Controller
         // TODO: move the logic to a service from here
         if (user != null)
         {
-            var audioId = Guid.NewGuid();
-            var blobClient = await BuildBlobClientAsync(audioId);
-            var blobHash = string.Empty;
-            using (var stream = file.OpenReadStream())
+            try
             {
-                var resp = await blobClient.UploadAsync(stream, true);
-                blobHash = Convert.ToBase64String(resp.Value.ContentHash);
+                var audioId = Guid.NewGuid();
+                var blobClient = await BuildBlobClientAsync(audioId);
+                var blobHash = string.Empty;
+                using (var stream = file.OpenReadStream())
+                {
+                    var resp = await blobClient.UploadAsync(stream, true);
+                    blobHash = Convert.ToBase64String(resp.Value.ContentHash);
+                }
+
+                var audioModel = new AudioModel
+                {
+                    Id = audioId,
+                    FileName = customTitle,
+                    FilePath = blobClient.Uri.ToString(),
+                    FileSize = file.Length,
+                    FileHash = blobHash,
+                    UploadTime = DateTime.UtcNow,
+                    UploadUser = user
+                };
+
+                _dbContext.AudioModels.Add(audioModel);
+                await _dbContext.SaveChangesAsync();
+
+                allAudios = await _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync();
+                ViewBag.Message = "File uploaded successfully.";
+
+                return View(new AudioModelsViewModel(allAudios));
             }
-
-            var audioModel = new AudioModel
+            catch (Exception ex)
             {
-                Id = audioId,
-                FileName = customTitle,
-                FilePath = blobClient.Uri.ToString(),
-                FileSize = file.Length,
-                FileHash = blobHash,
-                UploadTime = DateTime.UtcNow,
-                UploadUser = user
-            };
-
-            _dbContext.AudioModels.Add(audioModel);
-            await _dbContext.SaveChangesAsync();
-
-            ViewBag.Message = "File uploaded successfully.";
-
-            return RedirectToAction("Index");
+                ModelState.AddModelError("File", ex.Message);
+                return View(new AudioModelsViewModel(allAudios));
+            }
         }
         else
         {
             ModelState.AddModelError("File", "No user found.");
-            return RedirectToAction("Index");
+            return View(new AudioModelsViewModel(allAudios));
         }
     }
     
@@ -99,14 +117,23 @@ public class HomeController : Controller
         var audioModel = await _dbContext.AudioModels.FindAsync(id);
         if (audioModel == null)
         {
-            return NotFound();
+            return NotFound($"No audio with id {id} was found.");
         }
 
-        var blobClient = await BuildBlobClientAsync(id);
-        var blobDownloadInfo = await blobClient.DownloadAsync();
-        var stream = blobDownloadInfo.Value.Content;
+        try
+        {
 
-        return File(stream, "audio/mpeg", $"{id}.mp3");
+            var blobClient = await BuildBlobClientAsync(id);
+            var blobDownloadInfo = await blobClient.DownloadAsync();
+            var stream = blobDownloadInfo.Value.Content;
+
+            return File(stream, "audio/mpeg", $"{id}.mp3");
+        }
+        catch (Exception ex)
+        {
+            // TODO: remove the exception details from the response after debugging
+            return StatusCode(500, ex.ToString());
+        }
     }
 
     [Authorize]
@@ -124,7 +151,7 @@ public class HomeController : Controller
         _dbContext.AudioModels.Remove(audioModel);
         await _dbContext.SaveChangesAsync();
 
-        return RedirectToAction("Index");
+        return RedirectToAction("Upload");
     }
 
     [Route("feed.rss")]

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PodcastsHosting.Data;
@@ -14,13 +15,35 @@ builder.Services.AddDefaultIdentity<IdentityUser>()
 
 builder.Services.AddControllersWithViews();
 
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 2L * 1024 * 1024 * 1024; // 2000 GB
+});
+
 var app = builder.Build();
 
 // Apply migrations automatically
-using (var scope = app.Services.CreateScope())
+try
 {
+    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation(
+        "Is database accessible: {}",
+        dbContext.Database.CanConnect());
+    logger.LogInformation(
+        "Migrations already applied:\n{}",
+        string.Join(Environment.NewLine, await dbContext.Database.GetAppliedMigrationsAsync()));
+    logger.LogInformation(
+        "Migrations pending application:\n{}",
+        string.Join(Environment.NewLine, await dbContext.Database.GetPendingMigrationsAsync()));
+    logger.LogInformation("Applying migrations...");
     dbContext.Database.Migrate();
+    logger.LogInformation("Migrations applied successfully!");
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine(ex.Message);
 }
 
 // Configure the HTTP request pipeline.

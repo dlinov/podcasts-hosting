@@ -1,0 +1,63 @@
+@{
+    ViewData["Title"] = "Upload Files";
+}
+@model PodcastsHosting.Models.AudioModelsViewModel
+
+<h2>Upload Files</h2>
+
+<form asp-controller="Home" asp-action="Upload" method="post" enctype="multipart/form-data">
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger">
+        <ul>
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+    <div class="form-group">
+        <label for="customTitle">Custom book title</label>
+        <input type="text" class="form-control" id="customTitle" name="customTitle" />
+    </div>
+    <div class="form-group">
+        <label for="file">Choose file</label>
+        <input type="file" class="form-control-file" id="file" name="file" required />
+    </div>
+    <button type="submit" class="btn btn-primary">Upload</button>
+</form>
+
+@if (Model.AudioModels != null && Model.AudioModels.Any())
+{
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Path</th>
+            <th>User</th>
+            <th>Upload Time</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var audio in Model.AudioModels)
+        {
+            <tr>
+                <td>@audio.FileName</td>
+                <td>@audio.FilePath</td>
+                <td>@audio.UploadUser?.Email</td>
+                <td>@audio.UploadTime.ToString("g")</td>
+                <td>
+                    <a asp-controller="Home" asp-action="Download" asp-route-id="@audio.Id" class="btn btn-secondary">Download</a>
+                    <a asp-controller="Home" asp-action="Delete" asp-route-id="@audio.Id" class="btn btn-danger">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+}
+else
+{
+<p>No audio files available.</p>
+}

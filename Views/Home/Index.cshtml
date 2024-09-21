@@ -5,60 +5,29 @@
 
 <div class="text-center">
     <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    @* <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p> *@
+</div>
+
+<div>
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <p>
+            @foreach (var modelState in ViewData.ModelState.Values)
+            {
+                foreach (var error in modelState.Errors)
+                {
+                    <span>@error.ErrorMessage</span><br />
+                }
+            }
+        </p>
+    }
 </div>
 
 @if (User?.Identity?.IsAuthenticated == true)
 {
     <p>Welcome back, @User.Identity.Name!</p>
-    
-    <form asp-controller="Home" asp-action="Upload" method="post" enctype="multipart/form-data">
-        <div class="form-group">
-            <label for="customTitle">Custom book title</label>
-            <input type="text" class="form-control" id="customTitle" name="customTitle" />
-        </div>
-        <div class="form-group">
-            <label for="file">Choose file</label>
-            <input type="file" class="form-control-file" id="file" name="file" required />
-        </div>
-        <button type="submit" class="btn btn-primary">Upload</button>
-    </form>
-
-    @if (Model.AudioModels != null && Model.AudioModels.Any())
-    {
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Path</th>
-                    <th>User</th>
-                    <th>Upload Time</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var audio in Model.AudioModels)
-                {
-                    <tr>
-                        <td>@audio.FileName</td>
-                        <td>@audio.FilePath</td>
-                        <td>@audio.UploadUser?.Email</td>
-                        <td>@audio.UploadTime.ToString("g")</td>
-                        <td>
-                            <a asp-controller="Home" asp-action="Download" asp-route-id="@audio.Id" class="btn btn-secondary">Download</a>
-                            <a asp-controller="Home" asp-action="Delete" asp-route-id="@audio.Id" class="btn btn-danger">Delete</a>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
-    else
-    {
-        <p>No audio files available.</p>
-    }
 }
 else
 {
-    <p>Hello, guest! Please <a href="/Account/Login">log in</a> to access more features.</p>
+    <p>Hello, guest! Please <a href="/Identity/Account/Login">log in</a> to access more features.</p>
 }
