@@ -131,7 +131,7 @@ public class HomeController : Controller
     public async Task<IActionResult> Rss()
     {
         var channelTitle = _configuration["App:ChannelTitle"];
-        var description = _configuration["App:Description"];
+        var description = _configuration["App:ChannelDescription"];
         var protocol = Request.IsHttps ? "https" : "http";
         var baseUri = new Uri($"{protocol}://{Request.Host.ToUriComponent()}");
         var audioModels = await _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync();
@@ -161,7 +161,7 @@ public class HomeController : Controller
                         )
                     ),
                     new XElement(itunesNs + "explicit", "no"),
-                    new XElement(itunesNs + "image", new XAttribute("href", $"{baseUri}images/logo.jpeg")),
+                    new XElement(itunesNs + "image", new XAttribute("href", $"{baseUri}images/logo.jpg")),
                     audioModels.Select(audioModel =>
                         new XElement("item",
                             new XElement("title", audioModel.FileName),
