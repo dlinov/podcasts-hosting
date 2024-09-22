@@ -210,16 +210,7 @@ public class HomeController : Controller
 
     private async Task<BlobClient> BuildBlobClientAsync(Guid audioId)
     {
-        BlobServiceClient blobServiceClient;
-        if (_configuration["ASPNETCORE_ENVIRONMENT"] == "Development")
-        {
-            blobServiceClient = new BlobServiceClient(_connectionString);
-        }
-        else
-        {
-            var containerEndpoint = string.Format("https://{0}.blob.core.windows.net/{1}", AccountName, ContainerName);
-            blobServiceClient = new BlobServiceClient(new Uri(containerEndpoint), new DefaultAzureCredential());
-        }
+        var blobServiceClient = new BlobServiceClient(_connectionString);
         var containerClient = blobServiceClient.GetBlobContainerClient(ContainerName);
         await containerClient.CreateIfNotExistsAsync();
         var blobClient = containerClient.GetBlobClient(audioId.ToString());
