@@ -97,11 +97,13 @@ public class HomeController : Controller
 
                 allAudios = await _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync();
                 ViewBag.Message = "File uploaded successfully.";
+                _logger.LogInformation("File {audioModel.FileName} uploaded successfully by {user.Email}", audioModel.FileName, user.Email);
 
                 return View(new AudioModelsViewModel(allAudios));
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error uploading file");
                 ModelState.AddModelError("File", ex.Message);
                 return View(new AudioModelsViewModel(allAudios));
             }
@@ -131,8 +133,8 @@ public class HomeController : Controller
         }
         catch (Exception ex)
         {
-            // TODO: remove the exception details from the response after debugging
-            return StatusCode(500, ex.ToString());
+            _logger.LogError(ex, "Error downloading file with id {id}", id);
+            return StatusCode(500);
         }
     }
 
