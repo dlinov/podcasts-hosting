@@ -123,10 +123,9 @@ public class HomeController : Controller
 
         try
         {
-
             var blobClient = await BuildBlobClientAsync(id);
             var blobDownloadInfo = await blobClient.DownloadAsync();
-            var stream = blobDownloadInfo.Value.Content;
+            using var stream = blobDownloadInfo.Value.Content;
 
             return File(stream, "audio/mpeg", $"{id}.mp3");
         }
