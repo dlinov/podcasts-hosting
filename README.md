@@ -20,6 +20,7 @@ Install useful dotnet tools:
 
 Use `dotnet user-secrets`
 ```
+dotnet user-secrets init
 dotnet user-secrets set "ConnectionStrings:PodcastsHosting" "<some valid sql connection string>"
 dotnet user-secrets set "Storage:ConnectionString" "UseDevelopmentStorage=true;" # for local azurite
 dotnet ef database update
