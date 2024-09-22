@@ -1,6 +1,7 @@
 namespace PodcastsHosting.Controllers;
 
 using System.Diagnostics;
+using System.Text;
 using System.Xml.Linq;
 using Azure.Identity;
 using Azure.Storage.Blobs;
@@ -205,7 +206,7 @@ public class HomeController : Controller
             )
         );
 
-        return Content(rss.ToString(), "application/rss+xml");
+        return Content(rss.ToString(), "application/rss+xml", Encoding.UTF8);
     }
 
     private async Task<BlobClient> BuildBlobClientAsync(Guid audioId)
