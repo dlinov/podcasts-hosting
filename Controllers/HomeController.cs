@@ -3,7 +3,6 @@ namespace PodcastsHosting.Controllers;
 using System.Diagnostics;
 using System.Text;
 using System.Xml.Linq;
-using Azure.Identity;
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -35,7 +34,7 @@ public class HomeController : Controller
         _connectionString = _configuration["Storage:ConnectionString"];
     }
 
-    public async Task<IActionResult> Index()
+    public IActionResult Index()
     {
         return View();
     }
@@ -56,8 +55,14 @@ public class HomeController : Controller
     [HttpPost]
     [Authorize]
     [RequestSizeLimit(2L * 1024 * 1024 * 1024)]
-    public async Task<IActionResult> Upload(IFormFile file, string customTitle)
+    public async Task<IActionResult> Upload(
+        IFormFile? file,
+        string bookName,
+        string? bookSeries,
+        string? chapterTitle,
+        int? chapterNumber)
     {
+        // TODO: move this to the place where it's needed/extract method - it's called twice in happy flow
         var allAudios = await _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync();
         if (file == null || file.Length == 0)
         {
@@ -73,27 +78,28 @@ public class HomeController : Controller
             try
             {
                 var audioId = Guid.NewGuid();
+                var extension = Path.GetExtension(file.FileName);
+                var customTitle = BuildTitle(bookName, bookSeries, chapterTitle, chapterNumber);
+
                 var blobClient = await BuildBlobClientAsync(audioId);
-                var blobHash = string.Empty;
-                using (var stream = file.OpenReadStream())
-                {
-                    var resp = await blobClient.UploadAsync(stream, true);
-                    blobHash = Convert.ToBase64String(resp.Value.ContentHash);
-                }
+                await using var stream = file.OpenReadStream();
+                var resp = await blobClient.UploadAsync(stream, true);
+                var blobHash = Convert.ToBase64String(resp.Value.ContentHash);
 
                 var audioModel = new AudioModel
                 {
                     Id = audioId,
-                    FileName = customTitle,
+                    FileName = customTitle.ToString(),
                     FilePath = blobClient.Uri.ToString(),
                     FileSize = file.Length,
                     FileHash = blobHash,
+                    Extension = extension,
                     UploadTime = DateTime.UtcNow,
                     UploadUser = user
                 };
 
                 _dbContext.AudioModels.Add(audioModel);
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(); // TODO: remove file from storage if failed
 
                 allAudios = await _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync();
                 ViewBag.Message = "File uploaded successfully.";
@@ -114,7 +120,7 @@ public class HomeController : Controller
             return View(new AudioModelsViewModel(allAudios));
         }
     }
-    
+
     public async Task<IActionResult> Download(Guid id)
     {
         var audioModel = await _dbContext.AudioModels.FindAsync(id);
@@ -125,11 +131,13 @@ public class HomeController : Controller
 
         try
         {
+            var extension = audioModel.Extension ?? ".mp3";
+            var contentType = ChooseContentTypeByExtension(extension);
             var blobClient = await BuildBlobClientAsync(id);
             var blobDownloadInfo = await blobClient.DownloadAsync();
-            using var stream = blobDownloadInfo.Value.Content;
+            await using var stream = blobDownloadInfo.Value.Content;
 
-            return File(stream, "audio/mpeg", $"{id}.mp3");
+            return File(stream, contentType, $"{id}{extension}");
         }
         catch (Exception ex)
         {
@@ -197,7 +205,7 @@ public class HomeController : Controller
                             new XElement("enclosure",
                                 new XAttribute("url", $"{baseUri}Home/Download/{audioModel.Id}"),
                                 new XAttribute("length", audioModel.FileSize),
-                                new XAttribute("type", "audio/mpeg")
+                                new XAttribute("type", ChooseContentTypeByExtension(audioModel.Extension))
                             ),
                             new XElement("guid", audioModel.Id),
                             new XElement("pubDate", audioModel.UploadTime.ToString("R"))
@@ -217,5 +225,44 @@ public class HomeController : Controller
         await containerClient.CreateIfNotExistsAsync();
         var blobClient = containerClient.GetBlobClient(audioId.ToString());
         return blobClient;
+    }
+
+    private static StringBuilder BuildTitle(
+        string bookName,
+        string? bookSeries,
+        string? chapterTitle,
+        int? chapterNumber)
+    {
+        var customTitle = new StringBuilder(bookName);
+
+        if (!string.IsNullOrWhiteSpace(bookSeries))
+        {
+            customTitle.Append($" [{bookSeries}]");
+        }
+
+        if (!string.IsNullOrWhiteSpace(chapterTitle))
+        {
+            if (chapterNumber != null)
+            {
+                customTitle.Append($" | {chapterNumber} {chapterTitle}");
+            }
+            else
+            {
+                customTitle.Append($" | {chapterTitle}");
+            }
+        }
+
+        return customTitle;
+    }
+
+    private static string ChooseContentTypeByExtension(string? extension)
+    {
+        return extension switch
+        {
+            ".mp3" => "audio/mpeg",
+            ".m4a" => "audio/m4a",
+            ".m4b" => "audio/m4b", // not sure apple podcasts support this
+            _ => "audio/mpeg"
+        };
     }
 }

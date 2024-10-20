@@ -395,8 +395,10 @@ FodyWeavers.xsd
 *.msp
 
 # JetBrains Rider
+**/.idea/
 *.sln.iml
 
 # Azurite
 **/__azurite*
 **/__blobstorage__
+**/__queuestorage__

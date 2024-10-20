@@ -15,6 +15,12 @@ builder.Services.AddDefaultIdentity<IdentityUser>()
 
 builder.Services.AddControllersWithViews();
 
+// Configure the maximum request body size
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 512 * 1024 * 1024; // 512 MB
+});
+
 var app = builder.Build();
 
 // Apply migrations automatically

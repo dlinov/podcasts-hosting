@@ -26,7 +26,10 @@ public class AudioModel
     [Required]
     public DateTime UploadTime { get; set; }
 
-    public IdentityUser UploadUser { get; set; }
+    [MaxLength(15)]
+    public string? Extension { get; set; }
 
-    public string UploadUserId { get; set; }
+    public IdentityUser? UploadUser { get; set; }
+
+    public string? UploadUserId { get; set; }
 }
