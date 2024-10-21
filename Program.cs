@@ -33,6 +33,11 @@ try
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var appSettings = config.GetSection("App");
+    var appSettingsAsString = string.Join("; ",
+        appSettings.AsEnumerable().Select(x => x.ToString()));
+    logger.LogInformation("Current app settings: {Settings}", appSettingsAsString);
     logger.LogInformation(
         "Is database accessible: {}",
         dbContext.Database.CanConnect());

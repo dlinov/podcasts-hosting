@@ -87,18 +87,11 @@ public class FileService
         var valueContentHash = resp.Value.ContentHash;
         if (valueContentHash == null)
         {
-            _logger.LogWarning("[audio-{AudioId}] Uploaded blob hash is null, trying to calculate it (CanSeek={CanSeek}",
+            _logger.LogWarning("[audio-{AudioId}] Uploaded blob hash is null, trying to calculate it (CanSeek={CanSeek})",
                 audioId, stream.CanSeek);
             stream.Seek(0, SeekOrigin.Begin);
             valueContentHash = await MD5.Create().ComputeHashAsync(stream).ConfigureAwait(false);
-            if (valueContentHash == null || valueContentHash.Length == 0)
-            {
-                _logger.LogWarning("[audio-{AudioId}] Failed to calculate hash of the file", audioId);
-            }
-            else
-            {
-                _logger.LogInformation("[audio-{AudioId}] Hash of the file was calculated", audioId);
-            }
+            _logger.LogInformation("[audio-{AudioId}] Hash of the file was calculated", audioId);
         }
         var blobHash = Convert.ToBase64String(valueContentHash);
 
