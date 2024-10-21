@@ -2,10 +2,12 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PodcastsHosting.Data;
+using PodcastsHosting.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddLogging();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(builder.Configuration.GetConnectionString("PodcastsHosting")));
 builder.Services.AddDefaultIdentity<IdentityUser>()
@@ -14,6 +16,8 @@ builder.Services.AddDefaultIdentity<IdentityUser>()
             .AddDefaultTokenProviders();
 
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddScoped<FileService>();
 
 // Configure the maximum request body size
 builder.Services.Configure<FormOptions>(options =>

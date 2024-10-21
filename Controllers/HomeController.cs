@@ -3,35 +3,29 @@ namespace PodcastsHosting.Controllers;
 using System.Diagnostics;
 using System.Text;
 using System.Xml.Linq;
-using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using PodcastsHosting.Data;
 using PodcastsHosting.Models;
+using PodcastsHosting.Services;
 
 public class HomeController : Controller
 {
-    private const string AccountName = "podcasthostingstorage";
-    private const string ContainerName = "audiofiles";
     private readonly ILogger<HomeController> _logger;
-    private readonly UserManager<IdentityUser> _userManager;
-    private readonly ApplicationDbContext _dbContext;
     private readonly IConfiguration _configuration;
-    private readonly string _connectionString;
+    private readonly UserManager<IdentityUser> _userManager;
+    private readonly FileService _fileService;
 
     public HomeController(
         ILogger<HomeController> logger,
+        IConfiguration configuration,
         UserManager<IdentityUser> userManager,
-        ApplicationDbContext dbContext,
-        IConfiguration configuration)
+        FileService fileService)
     {
         _logger = logger;
-        _userManager = userManager;
-        _dbContext = dbContext;
         _configuration = configuration;
-        _connectionString = _configuration["Storage:ConnectionString"];
+        _userManager = userManager;
+        _fileService = fileService;
     }
 
     public IActionResult Index()
@@ -48,7 +42,7 @@ public class HomeController : Controller
     [Authorize]
     public async Task<IActionResult> Upload()
     {
-        var allAudios = await _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync();
+        var allAudios = await _fileService.ListAllAudios().ConfigureAwait(false);
         return View(new AudioModelsViewModel(allAudios));
     }
 
@@ -62,68 +56,40 @@ public class HomeController : Controller
         string? chapterTitle,
         int? chapterNumber)
     {
-        // TODO: move this to the place where it's needed/extract method - it's called twice in happy flow
-        var allAudios = await _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync();
         if (file == null || file.Length == 0)
         {
             ModelState.AddModelError("File", "Please upload a file.");
+            var allAudios = await _fileService.ListAllAudios().ConfigureAwait(false);
             return View(new AudioModelsViewModel(allAudios));
         }
 
         var user = await _userManager.GetUserAsync(User);
-
-        // TODO: move the logic to a service from here
         if (user != null)
         {
             try
             {
-                var audioId = Guid.NewGuid();
-                var extension = Path.GetExtension(file.FileName);
-                var customTitle = BuildTitle(bookName, bookSeries, chapterTitle, chapterNumber);
-
-                var blobClient = await BuildBlobClientAsync(audioId);
-                await using var stream = file.OpenReadStream();
-                var resp = await blobClient.UploadAsync(stream, true);
-                var blobHash = Convert.ToBase64String(resp.Value.ContentHash);
-
-                var audioModel = new AudioModel
-                {
-                    Id = audioId,
-                    FileName = customTitle.ToString(),
-                    FilePath = blobClient.Uri.ToString(),
-                    FileSize = file.Length,
-                    FileHash = blobHash,
-                    Extension = extension,
-                    UploadTime = DateTime.UtcNow,
-                    UploadUser = user
-                };
-
-                _dbContext.AudioModels.Add(audioModel);
-                await _dbContext.SaveChangesAsync(); // TODO: remove file from storage if failed
-
-                allAudios = await _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync();
+                await _fileService.UploadAudioAsync(user, file, bookName, bookSeries, chapterTitle, chapterNumber);
                 ViewBag.Message = "File uploaded successfully.";
-                _logger.LogInformation("File {audioModel.FileName} uploaded successfully by {user.Email}", audioModel.FileName, user.Email);
-
+                var allAudios = await _fileService.ListAllAudios().ConfigureAwait(false);
                 return View(new AudioModelsViewModel(allAudios));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error uploading file");
                 ModelState.AddModelError("File", ex.Message);
+                var allAudios = await _fileService.ListAllAudios().ConfigureAwait(false);
                 return View(new AudioModelsViewModel(allAudios));
             }
         }
-        else
-        {
-            ModelState.AddModelError("File", "No user found.");
-            return View(new AudioModelsViewModel(allAudios));
-        }
+
+        ModelState.AddModelError("File", "No user found.");
+        var audios = await _fileService.ListAllAudios().ConfigureAwait(false);
+        return View(new AudioModelsViewModel(audios));
     }
 
     public async Task<IActionResult> Download(Guid id)
     {
-        var audioModel = await _dbContext.AudioModels.FindAsync(id);
+        var audioModel = await _fileService.GetAudioAsync(id);;
         if (audioModel == null)
         {
             return NotFound($"No audio with id {id} was found.");
@@ -133,9 +99,7 @@ public class HomeController : Controller
         {
             var extension = audioModel.Extension ?? ".mp3";
             var contentType = ChooseContentTypeByExtension(extension);
-            var blobClient = await BuildBlobClientAsync(id);
-            var blobDownloadInfo = await blobClient.DownloadAsync();
-            await using var stream = blobDownloadInfo.Value.Content;
+            await using var stream = await _fileService.DownloadAudioAsync(id);
 
             return File(stream, contentType, $"{id}{extension}");
         }
@@ -149,18 +113,12 @@ public class HomeController : Controller
     [Authorize]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var audioModel = await _dbContext.AudioModels.FindAsync(id);
+        var audioModel = await _fileService.GetAudioAsync(id);
         if (audioModel == null)
         {
-            return NotFound();
+            return NotFound($"No audio with id {id} was found.");
         }
-
-        var blobClient = await BuildBlobClientAsync(id);
-        await blobClient.DeleteIfExistsAsync();
-
-        _dbContext.AudioModels.Remove(audioModel);
-        await _dbContext.SaveChangesAsync();
-
+        await _fileService.DeleteAudioAsync(id).ConfigureAwait(false);
         return RedirectToAction("Upload");
     }
 
@@ -171,7 +129,7 @@ public class HomeController : Controller
         var description = _configuration["App:ChannelDescription"];
         var protocol = Request.IsHttps ? "https" : "http";
         var baseUri = new Uri($"{protocol}://{Request.Host.ToUriComponent()}");
-        var audioModels = await _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync();
+        var audioModels = await _fileService.ListAllAudios().ConfigureAwait(false);
         var itunesNs = XNamespace.Get("http://www.itunes.com/dtds/podcast-1.0.dtd");
         var podcastNs = XNamespace.Get("http://podcastindex.org/namespace/1.0");
         var atomNs = XNamespace.Get("http://www.w3.org/2005/Atom");
@@ -216,43 +174,6 @@ public class HomeController : Controller
         );
 
         return Content(rss.ToString(), "application/rss+xml", Encoding.UTF8);
-    }
-
-    private async Task<BlobClient> BuildBlobClientAsync(Guid audioId)
-    {
-        var blobServiceClient = new BlobServiceClient(_connectionString);
-        var containerClient = blobServiceClient.GetBlobContainerClient(ContainerName);
-        await containerClient.CreateIfNotExistsAsync();
-        var blobClient = containerClient.GetBlobClient(audioId.ToString());
-        return blobClient;
-    }
-
-    private static StringBuilder BuildTitle(
-        string bookName,
-        string? bookSeries,
-        string? chapterTitle,
-        int? chapterNumber)
-    {
-        var customTitle = new StringBuilder(bookName);
-
-        if (!string.IsNullOrWhiteSpace(bookSeries))
-        {
-            customTitle.Append($" [{bookSeries}]");
-        }
-
-        if (!string.IsNullOrWhiteSpace(chapterTitle))
-        {
-            if (chapterNumber != null)
-            {
-                customTitle.Append($" | {chapterNumber} {chapterTitle}");
-            }
-            else
-            {
-                customTitle.Append($" | {chapterTitle}");
-            }
-        }
-
-        return customTitle;
     }
 
     private static string ChooseContentTypeByExtension(string? extension)
