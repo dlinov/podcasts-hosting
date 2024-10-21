@@ -111,6 +111,13 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
+            // kind of hack to prevent registration on publicly available website
+            var isRegistrationOpen = _configuration.GetValue<bool>("App:RegistrationOpen");
+            if (!isRegistrationOpen)
+            {
+                return RedirectToPage("~/");
+            }
+
             returnUrl ??= Url.Content("~/");
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
             if (ModelState.IsValid)
@@ -159,11 +166,6 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
 
         private IdentityUser CreateUser()
         {
-            var x = _configuration["App:RegistrationOpen"];
-            if (x != "True")
-            {
-                RedirectToPage("~/");
-            }
             try
             {
                 return Activator.CreateInstance<IdentityUser>();
