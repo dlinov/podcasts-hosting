@@ -99,9 +99,9 @@ public class HomeController : Controller
         {
             var extension = audioModel.Extension ?? ".mp3";
             var contentType = ChooseContentTypeByExtension(extension);
+            var fileDownloadName = $"{id}{extension}";
             await using var stream = await _fileService.DownloadAudioAsync(id);
-
-            return File(stream, contentType, $"{id}{extension}");
+            return File(stream, contentType, fileDownloadName, enableRangeProcessing: true);
         }
         catch (Exception ex)
         {
