@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PodcastsHosting.Data;
@@ -14,8 +15,15 @@ builder.Services.AddDefaultIdentity<IdentityUser>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultUI()
             .AddDefaultTokenProviders();
-
 builder.Services.AddControllersWithViews();
+builder.Services.AddHttpLogging(options =>
+{
+    options.LoggingFields = HttpLoggingFields.RequestPropertiesAndHeaders
+                            | HttpLoggingFields.RequestBody
+                            | HttpLoggingFields.ResponsePropertiesAndHeaders;
+    options.RequestBodyLogLimit = 4096;
+    options.ResponseBodyLogLimit = 4096;
+});
 
 builder.Services.AddScoped<FileService>();
 
