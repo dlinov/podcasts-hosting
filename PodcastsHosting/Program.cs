@@ -36,32 +36,35 @@ builder.Services.Configure<FormOptions>(options =>
 var app = builder.Build();
 
 // Apply migrations automatically
-try
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-    var appSettings = config.GetSection("App");
-    var appSettingsAsString = string.Join("; ",
-        appSettings.AsEnumerable().Select(x => x.ToString()));
-    logger.LogInformation("Current app settings: {Settings}", appSettingsAsString);
-    logger.LogInformation(
-        "Is database accessible: {}",
-        dbContext.Database.CanConnect());
-    logger.LogInformation(
-        "Migrations already applied:\n{}",
-        string.Join(Environment.NewLine, await dbContext.Database.GetAppliedMigrationsAsync()));
-    logger.LogInformation(
-        "Migrations pending application:\n{}",
-        string.Join(Environment.NewLine, await dbContext.Database.GetPendingMigrationsAsync()));
-    logger.LogInformation("Applying migrations...");
-    dbContext.Database.Migrate();
-    logger.LogInformation("Migrations applied successfully!");
-}
-catch (Exception ex)
-{
-    Console.Error.WriteLine(ex.Message);
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        var appSettings = config.GetSection("App");
+        var appSettingsAsString = string.Join("; ",
+            appSettings.AsEnumerable().Select(x => x.ToString()));
+        logger.LogInformation("Current app settings: {Settings}", appSettingsAsString);
+        logger.LogInformation(
+            "Is database accessible: {}",
+            dbContext.Database.CanConnect());
+        logger.LogInformation(
+            "Migrations already applied:\n{}",
+            string.Join(Environment.NewLine, await dbContext.Database.GetAppliedMigrationsAsync()));
+        logger.LogInformation(
+            "Migrations pending application:\n{}",
+            string.Join(Environment.NewLine, await dbContext.Database.GetPendingMigrationsAsync()));
+        logger.LogInformation("Applying migrations...");
+        dbContext.Database.Migrate();
+        logger.LogInformation("Migrations applied successfully!");
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine(ex.Message);
+    }
 }
 
 // Configure the HTTP request pipeline.
@@ -87,3 +90,5 @@ app.MapControllerRoute(
 app.MapRazorPages();
 
 app.Run();
+
+public partial class Program;
