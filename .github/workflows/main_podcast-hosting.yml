@@ -21,6 +21,13 @@ jobs:
         with:
           dotnet-version: '10.x'
 
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Restore frontend libraries
+        working-directory: PodcastsHosting
+        run: dotnet tool run libman -- restore --verbosity minimal
+
       - name: Build with dotnet
         run: dotnet build PodcastsHosting.slnx --configuration Release
 
