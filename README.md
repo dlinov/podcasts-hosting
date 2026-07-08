@@ -36,6 +36,10 @@ dotnet ef database update
 
 Uploads are limited to MP3, M4A, and M4B files. The app checks extension, browser-provided content type, and basic file signatures before uploading to storage.
 
+Health check endpoints:
+- `/health` and `/health/live` are liveness checks.
+- `/health/ready` checks database connectivity for readiness.
+
 ### Frontend libraries
 Frontend browser libraries are managed with [LibMan](https://learn.microsoft.com/aspnet/core/client-side/libman/) using the local dotnet tool manifest in `.config/dotnet-tools.json` and the pinned manifest at `PodcastsHosting/libman.json`.
 

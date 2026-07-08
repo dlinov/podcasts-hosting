@@ -1,10 +1,12 @@
 namespace PodcastsHosting.Tests;
 
+using System.Security.Claims;
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using PodcastsHosting.Controllers;
 using PodcastsHosting.Models;
@@ -82,13 +84,45 @@ public class HomeControllerSecurityTests
         Assert.False(fileService.UploadWasCalled);
     }
 
+    [Fact]
+    public async Task Upload_WhenUploadFails_DoesNotExposeRawExceptionMessage()
+    {
+        var fileService = new DeletingFileService
+        {
+            UploadException = new InvalidOperationException("secret storage connection string")
+        };
+        var controller = CreateController(fileService);
+        var file = CreateFormFile([(byte)'I', (byte)'D', (byte)'3', 4], "episode.mp3", "audio/mpeg");
+
+        var result = await controller.Upload(file, "Book", null, null, null);
+
+        Assert.IsType<ViewResult>(result);
+        var error = Assert.Single(controller.ModelState["File"]!.Errors);
+        Assert.Equal("The file could not be uploaded. Please try again later.", error.ErrorMessage);
+        Assert.DoesNotContain("secret", error.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static HomeController CreateController(IFileService fileService)
     {
         return new HomeController(
             NullLogger<HomeController>.Instance,
             configuration: null!,
-            userManager: null!,
-            fileService);
+            new TestUserManager(),
+            fileService)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [
+                        new Claim(ClaimTypes.NameIdentifier, TestUserManager.TestUserId),
+                        new Claim(ClaimTypes.Name, TestUserManager.TestUserEmail)
+                    ],
+                    authenticationType: "Test"))
+                }
+            }
+        };
     }
 
     private static AudioModel CreateAudio(Guid audioId)
@@ -126,7 +160,9 @@ public class HomeControllerSecurityTests
 
         public Guid? DeletedAudioId { get; private set; }
 
-    public bool UploadWasCalled { get; private set; }
+        public bool UploadWasCalled { get; private set; }
+
+        public Exception? UploadException { get; init; }
 
         public Task<List<AudioModel>> ListAllAudios()
         {
@@ -159,7 +195,99 @@ public class HomeControllerSecurityTests
             int? chapterNumber)
         {
             UploadWasCalled = true;
+            if (UploadException != null)
+            {
+                throw UploadException;
+            }
+
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class TestUserManager : UserManager<IdentityUser>
+    {
+        public const string TestUserEmail = "upload-test@example.com";
+        public const string TestUserId = "upload-test-user";
+
+        public TestUserManager()
+            : base(
+                new TestUserStore(),
+                Microsoft.Extensions.Options.Options.Create(new IdentityOptions()),
+                new PasswordHasher<IdentityUser>(),
+                [],
+                [],
+                new UpperInvariantLookupNormalizer(),
+                new IdentityErrorDescriber(),
+                new ServiceCollection().BuildServiceProvider(),
+                NullLogger<UserManager<IdentityUser>>.Instance)
+        {
+        }
+
+        public override Task<IdentityUser?> GetUserAsync(ClaimsPrincipal principal)
+        {
+            return Task.FromResult<IdentityUser?>(new IdentityUser
+            {
+                Id = TestUserId,
+                Email = TestUserEmail,
+                UserName = TestUserEmail
+            });
+        }
+    }
+
+    private sealed class TestUserStore : IUserStore<IdentityUser>
+    {
+        public void Dispose()
+        {
+        }
+
+        public Task<string> GetUserIdAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(user.Id);
+        }
+
+        public Task<string?> GetUserNameAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(user.UserName);
+        }
+
+        public Task SetUserNameAsync(IdentityUser user, string? userName, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<string?> GetNormalizedUserNameAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(user.NormalizedUserName);
+        }
+
+        public Task SetNormalizedUserNameAsync(IdentityUser user, string? normalizedName, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<IdentityResult> CreateAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<IdentityResult> UpdateAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<IdentityResult> DeleteAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<IdentityUser?> FindByIdAsync(string userId, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<IdentityUser?> FindByNameAsync(string normalizedUserName, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
         }
     }
 }

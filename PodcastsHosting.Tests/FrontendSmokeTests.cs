@@ -34,6 +34,20 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
     }
 
     [Theory]
+    [InlineData("/health")]
+    [InlineData("/health/live")]
+    public async Task LivenessHealthCheck_ReturnsHealthy(string path)
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync(path);
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Healthy", content);
+    }
+
+    [Theory]
     [InlineData("/css/site.css", "text/css")]
     [InlineData("/js/site.js", "text/javascript")]
     [InlineData("/favicon.ico", "image/x-icon")]

@@ -83,8 +83,8 @@ public class HomeController : Controller
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error uploading file");
-                ModelState.AddModelError("File", ex.Message);
+                _logger.LogError(ex, "Error uploading file: {Message}. Details: {Details}", ex.Message, ex.ToString());
+                ModelState.AddModelError("File", "The file could not be uploaded. Please try again later.");
                 var allAudios = await _fileService.ListAllAudios().ConfigureAwait(false);
                 return View(new AudioModelsViewModel(allAudios));
             }
