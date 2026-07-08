@@ -89,7 +89,7 @@ public class FileService : IFileService
             _logger.LogWarning("[audio-{AudioId}] Uploaded blob hash is null, trying to calculate it (CanSeek={CanSeek})",
                 audioId, stream.CanSeek);
             stream.Seek(0, SeekOrigin.Begin);
-            valueContentHash = await MD5.Create().ComputeHashAsync(stream).ConfigureAwait(false);
+            valueContentHash = await MD5.Create().ComputeHashAsync(stream);
             _logger.LogInformation("[audio-{AudioId}] Hash of the file was calculated", audioId);
         }
         var blobHash = Convert.ToBase64String(valueContentHash);
@@ -125,7 +125,7 @@ public class FileService : IFileService
     {
         var blobServiceClient = new BlobServiceClient(_connectionString);
         var containerClient = blobServiceClient.GetBlobContainerClient(ContainerName);
-        await containerClient.CreateIfNotExistsAsync().ConfigureAwait(false);
+        await containerClient.CreateIfNotExistsAsync();
         var blobClient = containerClient.GetBlobClient(audioId.ToString());
         return blobClient;
     }

@@ -1,5 +1,5 @@
 # Podcasts hosting app
-TODO: complete decription
+Small ASP.NET Core app for hosting private audiobook/podcast-style RSS feeds backed by Azure Blob Storage.
 
 ### Local development
 Trust ASP.NET dev cert:

@@ -42,7 +42,7 @@ public class HomeController : Controller
     [Authorize]
     public async Task<IActionResult> Upload()
     {
-        var allAudios = await _fileService.ListAllAudios().ConfigureAwait(false);
+        var allAudios = await _fileService.ListAllAudios();
         return View(new AudioModelsViewModel(allAudios));
     }
 
@@ -59,7 +59,7 @@ public class HomeController : Controller
         if (file == null || file.Length == 0)
         {
             ModelState.AddModelError("File", "Please upload a file.");
-            var allAudios = await _fileService.ListAllAudios().ConfigureAwait(false);
+            var allAudios = await _fileService.ListAllAudios();
             return View(new AudioModelsViewModel(allAudios));
         }
 
@@ -67,7 +67,7 @@ public class HomeController : Controller
         if (validationError != null)
         {
             ModelState.AddModelError("File", validationError);
-            var allAudios = await _fileService.ListAllAudios().ConfigureAwait(false);
+            var allAudios = await _fileService.ListAllAudios();
             return View(new AudioModelsViewModel(allAudios));
         }
 
@@ -78,20 +78,20 @@ public class HomeController : Controller
             {
                 await _fileService.UploadAudioAsync(user, file, bookName, bookSeries, chapterTitle, chapterNumber);
                 ViewBag.Message = "File uploaded successfully.";
-                var allAudios = await _fileService.ListAllAudios().ConfigureAwait(false);
+                var allAudios = await _fileService.ListAllAudios();
                 return View(new AudioModelsViewModel(allAudios));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error uploading file: {Message}. Details: {Details}", ex.Message, ex.ToString());
                 ModelState.AddModelError("File", "The file could not be uploaded. Please try again later.");
-                var allAudios = await _fileService.ListAllAudios().ConfigureAwait(false);
+                var allAudios = await _fileService.ListAllAudios();
                 return View(new AudioModelsViewModel(allAudios));
             }
         }
 
         ModelState.AddModelError("File", "No user found.");
-        var audios = await _fileService.ListAllAudios().ConfigureAwait(false);
+        var audios = await _fileService.ListAllAudios();
         return View(new AudioModelsViewModel(audios));
     }
 
@@ -132,7 +132,7 @@ public class HomeController : Controller
         {
             return NotFound($"No audio with id {id} was found.");
         }
-        await _fileService.DeleteAudioAsync(id).ConfigureAwait(false);
+        await _fileService.DeleteAudioAsync(id);
         return RedirectToAction("Upload");
     }
 
@@ -142,7 +142,7 @@ public class HomeController : Controller
         var channelTitle = _configuration["App:ChannelTitle"];
         var description = _configuration["App:ChannelDescription"];
         var baseUri = GetPublicBaseUri();
-        var audioModels = await _fileService.ListAllAudios().ConfigureAwait(false);
+        var audioModels = await _fileService.ListAllAudios();
         var itunesNs = XNamespace.Get("http://www.itunes.com/dtds/podcast-1.0.dtd");
         var podcastNs = XNamespace.Get("http://podcastindex.org/namespace/1.0");
         var atomNs = XNamespace.Get("http://www.w3.org/2005/Atom");
