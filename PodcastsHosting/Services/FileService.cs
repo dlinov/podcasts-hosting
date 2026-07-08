@@ -4,6 +4,7 @@ namespace PodcastsHosting.Services;
 
 using System.Data.Common;
 using System.Text;
+using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.AspNetCore.Identity;
@@ -15,6 +16,7 @@ public class FileService : IFileService
 {
     private const string AccountName = "podcasthostingstorage";
     private const string ContainerName = "audiofiles";
+    private const int BlobTransferChunkSize = 4 * 1024 * 1024;
     private readonly ILogger<FileService> _logger;
     private readonly ApplicationDbContext _dbContext;
     private readonly string _connectionString;
@@ -68,7 +70,19 @@ public class FileService : IFileService
 
         var blobClient = await BuildBlobClientAsync(audioId);
         await using var stream = file.OpenReadStream();
-        var resp = await blobClient.UploadAsync(stream, true);
+        var resp = await blobClient.UploadAsync(stream, new BlobUploadOptions
+        {
+            HttpHeaders = new BlobHttpHeaders
+            {
+                ContentType = file.ContentType
+            },
+            TransferOptions = new StorageTransferOptions
+            {
+                InitialTransferSize = BlobTransferChunkSize,
+                MaximumTransferSize = BlobTransferChunkSize,
+                MaximumConcurrency = 1
+            }
+        });
         if (!resp.HasValue)
         {
             using var rawResponse = resp.GetRawResponse();
