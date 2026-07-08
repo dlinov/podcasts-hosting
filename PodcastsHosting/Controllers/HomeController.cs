@@ -114,7 +114,9 @@ public class HomeController : Controller
         }
     }
 
+    [HttpPost]
     [Authorize]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(Guid id)
     {
         var audioModel = await _fileService.GetAudioAsync(id);
