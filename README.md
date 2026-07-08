@@ -1,5 +1,5 @@
 # Podcasts hosting app
-TODO: complete decription
+Small ASP.NET Core app for hosting private audiobook/podcast-style RSS feeds backed by Azure Blob Storage.
 
 ### Local development
 Trust ASP.NET dev cert:
@@ -28,8 +28,17 @@ Use `dotnet user-secrets`
 dotnet user-secrets init
 dotnet user-secrets set "ConnectionStrings:PodcastsHosting" "<some valid sql connection string>"
 dotnet user-secrets set "Storage:ConnectionString" "UseDevelopmentStorage=true;" # for local azurite
+dotnet user-secrets set "App:PublicBaseUrl" "https://localhost:5003/"
 dotnet ef database update
 ```
+
+`App:PublicBaseUrl` must be an absolute URL. The RSS feed uses it for feed, image, and audio enclosure links so podcast clients do not depend on proxy headers or the incoming `Host` header.
+
+Uploads are limited to MP3, M4A, and M4B files. The app checks extension, browser-provided content type, and basic file signatures before uploading to storage.
+
+Health check endpoints:
+- `/health` and `/health/live` are liveness checks.
+- `/health/ready` checks database connectivity for readiness.
 
 ### Frontend libraries
 Frontend browser libraries are managed with [LibMan](https://learn.microsoft.com/aspnet/core/client-side/libman/) using the local dotnet tool manifest in `.config/dotnet-tools.json` and the pinned manifest at `PodcastsHosting/libman.json`.
@@ -62,4 +71,23 @@ dotnet tool run libman -- restore --verbosity minimal
 cd ..
 dotnet test PodcastsHosting.slnx
 ```
+
+### Large upload stress test
+The normal test suite does not upload a large file. To check large multipart uploads manually, run the opt-in stress test with a .NET GC heap limit set before `dotnet test` starts:
+`0x18000000` is 402,653,184 bytes, or 384 MiB.
+```
+RUN_LARGE_UPLOAD_TESTS=true \
+DOTNET_GCHeapHardLimit=0x18000000 \
+dotnet test PodcastsHosting.Tests/PodcastsHosting.Tests.csproj --filter FullyQualifiedName~LargeUploadStressTests
+```
+
+The default generated upload size is 220 MiB. Override it for quick local validation:
+```
+RUN_LARGE_UPLOAD_TESTS=true \
+LARGE_UPLOAD_SIZE_MB=16 \
+DOTNET_GCHeapHardLimit=0x18000000 \
+dotnet test PodcastsHosting.Tests/PodcastsHosting.Tests.csproj --filter FullyQualifiedName~LargeUploadStressTests
+```
+
+This test uses a generated stream instead of storing the test file on disk and a fake upload service that drains the uploaded file stream to `Stream.Null`. Because `WebApplicationFactory` hosts the app in the test process, the heap limit applies to the test process and app together.
 

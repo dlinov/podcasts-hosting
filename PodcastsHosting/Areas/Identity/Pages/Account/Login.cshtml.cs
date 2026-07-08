@@ -21,11 +21,13 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
     {
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
+        private readonly IConfiguration _configuration;
 
-        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger)
+        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger, IConfiguration configuration)
         {
             _signInManager = signInManager;
             _logger = logger;
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -53,6 +55,8 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
         /// </summary>
         [TempData]
         public string ErrorMessage { get; set; }
+
+        public bool IsRegistrationOpen { get; set; }
 
         /// <summary>
         ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
@@ -98,6 +102,8 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
 
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
+            IsRegistrationOpen = _configuration.GetValue<bool>("App:RegistrationOpen");
+
             ReturnUrl = returnUrl;
         }
 
@@ -106,12 +112,11 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
             returnUrl ??= Url.Content("~/");
 
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+            IsRegistrationOpen = _configuration.GetValue<bool>("App:RegistrationOpen");
 
             if (ModelState.IsValid)
             {
-                // This doesn't count login failures towards account lockout
-                // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: true);
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User logged in.");

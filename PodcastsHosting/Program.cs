@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using PodcastsHosting.Data;
 using PodcastsHosting.Services;
 
@@ -11,11 +13,19 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddLogging();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(builder.Configuration.GetConnectionString("PodcastsHosting")));
-builder.Services.AddDefaultIdentity<IdentityUser>()
+builder.Services.AddDefaultIdentity<IdentityUser>(options =>
+    {
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.Lockout.MaxFailedAccessAttempts = 5;
+    })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultUI()
             .AddDefaultTokenProviders();
 builder.Services.AddControllersWithViews();
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
+    .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 builder.Services.AddHttpLogging(options =>
 {
     options.LoggingFields = HttpLoggingFields.RequestPropertiesAndHeaders
@@ -38,33 +48,26 @@ var app = builder.Build();
 // Apply migrations automatically
 if (!app.Environment.IsEnvironment("Testing"))
 {
-    try
-    {
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-        var appSettings = config.GetSection("App");
-        var appSettingsAsString = string.Join("; ",
-            appSettings.AsEnumerable().Select(x => x.ToString()));
-        logger.LogInformation("Current app settings: {Settings}", appSettingsAsString);
-        logger.LogInformation(
-            "Is database accessible: {}",
-            dbContext.Database.CanConnect());
-        logger.LogInformation(
-            "Migrations already applied:\n{}",
-            string.Join(Environment.NewLine, await dbContext.Database.GetAppliedMigrationsAsync()));
-        logger.LogInformation(
-            "Migrations pending application:\n{}",
-            string.Join(Environment.NewLine, await dbContext.Database.GetPendingMigrationsAsync()));
-        logger.LogInformation("Applying migrations...");
-        dbContext.Database.Migrate();
-        logger.LogInformation("Migrations applied successfully!");
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine(ex.Message);
-    }
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var appSettings = config.GetSection("App");
+    var appSettingsAsString = string.Join("; ",
+        appSettings.AsEnumerable().Select(x => x.ToString()));
+    logger.LogInformation("Current app settings: {Settings}", appSettingsAsString);
+    logger.LogInformation(
+        "Is database accessible: {}",
+        dbContext.Database.CanConnect());
+    logger.LogInformation(
+        "Migrations already applied:\n{}",
+        string.Join(Environment.NewLine, await dbContext.Database.GetAppliedMigrationsAsync()));
+    logger.LogInformation(
+        "Migrations pending application:\n{}",
+        string.Join(Environment.NewLine, await dbContext.Database.GetPendingMigrationsAsync()));
+    logger.LogInformation("Applying migrations...");
+    dbContext.Database.Migrate();
+    logger.LogInformation("Migrations applied successfully!");
 }
 
 // Configure the HTTP request pipeline.
@@ -88,5 +91,17 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapRazorPages();
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live")
+});
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live")
+});
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
 
 app.Run();

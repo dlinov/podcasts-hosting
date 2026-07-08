@@ -89,13 +89,14 @@ public class HomeControllerStreamingTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["App:ChannelTitle"] = "Test Podcast",
-                ["App:ChannelDescription"] = "Test feed"
+                ["App:ChannelDescription"] = "Test feed",
+                ["App:PublicBaseUrl"] = "https://podcasts.example/"
             })
             .Build();
 
         var httpContext = new DefaultHttpContext();
-        httpContext.Request.Scheme = "https";
-        httpContext.Request.Host = new HostString("podcasts.example");
+        httpContext.Request.Scheme = "http";
+        httpContext.Request.Host = new HostString("spoofed.example");
 
         return new HomeController(
             NullLogger<HomeController>.Instance,
