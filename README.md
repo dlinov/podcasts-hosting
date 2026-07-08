@@ -34,11 +34,40 @@ dotnet ef database update
 
 `App:PublicBaseUrl` must be an absolute URL. The RSS feed uses it for feed, image, and audio enclosure links so podcast clients do not depend on proxy headers or the incoming `Host` header.
 
-Uploads are limited to MP3, M4A, and M4B files. The app checks extension, browser-provided content type, and basic file signatures before uploading to storage.
+Uploads are limited to MP3, AAC, M4A, and M4B files. The app checks extension, browser-provided content type, and basic file signatures before uploading to storage.
 
 Health check endpoints:
 - `/health` and `/health/live` are liveness checks.
 - `/health/ready` checks database connectivity for readiness.
+
+### Docker Compose
+Run the app locally with SQL Server and Azurite:
+```
+docker compose up --build
+```
+
+The app is available at `http://localhost:8080`. The compose setup provides:
+- ASP.NET Core app on port `8080`
+- SQL Server on host port `14333`
+- Azurite Blob Storage on host port `10000`
+
+The app applies EF Core migrations on startup. `App:PublicBaseUrl` is set to `http://localhost:8080/`, so the local RSS feed uses compose-local URLs.
+The Azurite account key is configured through `AZURITE_ACCOUNT_KEY` and defaults to a local development key shared by the app and Azurite containers.
+
+Override the local SQL Server password if needed:
+```
+MSSQL_SA_PASSWORD='Your_Strong_Password_123!' docker compose up --build
+```
+
+Override the local Azurite account key if needed:
+```
+AZURITE_ACCOUNT_KEY='<base64-account-key>' docker compose up --build
+```
+
+Remove local compose data volumes:
+```
+docker compose down -v
+```
 
 ### Frontend libraries
 Frontend browser libraries are managed with [LibMan](https://learn.microsoft.com/aspnet/core/client-side/libman/) using the local dotnet tool manifest in `.config/dotnet-tools.json` and the pinned manifest at `PodcastsHosting/libman.json`.

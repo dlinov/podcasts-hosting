@@ -67,6 +67,19 @@ public class HomeControllerStreamingTests
     }
 
     [Fact]
+    public async Task Download_ForAac_ReturnsAacContentType()
+    {
+        var audioId = Guid.NewGuid();
+        var audio = CreateAudio(audioId, ".aac");
+        var controller = CreateController(new FakeFileService([audio], Encoding.ASCII.GetBytes("0123456789")));
+
+        var result = await controller.Download(audioId);
+
+        var fileResult = Assert.IsType<FileStreamResult>(result);
+        Assert.Equal("audio/aac", fileResult.ContentType);
+    }
+
+    [Fact]
     public async Task Rss_UsesStreamableAudioUrlAndAppleCompatibleMimeType()
     {
         var audioId = Guid.NewGuid();

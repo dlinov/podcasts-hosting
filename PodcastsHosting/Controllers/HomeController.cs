@@ -205,6 +205,7 @@ public class HomeController : Controller
         return NormalizeExtension(extension) switch
         {
             ".mp3" => "audio/mpeg",
+            ".aac" => "audio/aac",
             ".m4a" => "audio/mp4",
             ".m4b" => "audio/mp4",
             _ => "audio/mpeg"

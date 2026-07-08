@@ -1,0 +1,57 @@
+services:
+  podcasts-hosting:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    mem_limit: 512m
+    memswap_limit: 512m
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      azurite:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      App__PublicBaseUrl: http://localhost:8080/
+      ConnectionStrings__PodcastsHosting: Server=sqlserver,1433;Database=PodcastsHosting;User Id=sa;Password=${MSSQL_SA_PASSWORD:-PodcastsHosting_dev_2026!};TrustServerCertificate=True;MultipleActiveResultSets=true
+      DOTNET_GCHeapHardLimit: "0x18000000"
+      Storage__ConnectionString: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=${AZURITE_ACCOUNT_KEY:-cG9kY2FzdHMtaG9zdGluZy1sb2NhbC1henVyaXRlLWFjY291bnQta2V5LTIwMjY=};BlobEndpoint=http://azurite:10000/devstoreaccount1;
+    ports:
+      - "8080:8080"
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    mem_limit: 1g
+    memswap_limit: 1g
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-PodcastsHosting_dev_2026!}
+    ports:
+      - "14333:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '${MSSQL_SA_PASSWORD:-PodcastsHosting_dev_2026!}' -C -Q 'SELECT 1' || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P '${MSSQL_SA_PASSWORD:-PodcastsHosting_dev_2026!}' -Q 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    mem_limit: 128m
+    memswap_limit: 128m
+    environment:
+      AZURITE_ACCOUNTS: devstoreaccount1:${AZURITE_ACCOUNT_KEY:-cG9kY2FzdHMtaG9zdGluZy1sb2NhbC1henVyaXRlLWFjY291bnQta2V5LTIwMjY=}
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    volumes:
+      - azurite-data:/data
+
+volumes:
+  sqlserver-data:
+  azurite-data:
