@@ -40,7 +40,7 @@ builder.Services.AddScoped<IFileService, FileService>();
 // Configure the maximum request body size
 builder.Services.Configure<FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = 512 * 1024 * 1024; // 512 MB
+    options.MultipartBodyLengthLimit = 1024L * 1024 * 1024; // 1 GB
 });
 
 var app = builder.Build();

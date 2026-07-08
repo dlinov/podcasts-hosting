@@ -34,7 +34,7 @@ dotnet ef database update
 
 `App:PublicBaseUrl` must be an absolute URL. The RSS feed uses it for feed, image, and audio enclosure links so podcast clients do not depend on proxy headers or the incoming `Host` header.
 
-Uploads are limited to MP3, AAC, M4A, and M4B files. The app checks extension, browser-provided content type, and basic file signatures before uploading to storage.
+Uploads are limited to 1 GiB and to MP3, AAC, M4A, and M4B files. The app checks extension, browser-provided content type, and basic file signatures before uploading to storage.
 
 Health check endpoints:
 - `/health` and `/health/live` are liveness checks.

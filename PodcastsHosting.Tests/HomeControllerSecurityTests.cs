@@ -14,10 +14,10 @@ using PodcastsHosting.Services;
 
 public class HomeControllerSecurityTests
 {
-    private const long MaxUploadSizeBytes = 512L * 1024 * 1024;
+    private const long MaxUploadSizeBytes = 1024L * 1024 * 1024;
 
     [Fact]
-    public void Upload_PostRequestSizeLimit_Is512MiB()
+    public void Upload_PostRequestSizeLimit_Is1GiB()
     {
         var method = typeof(HomeController).GetMethod(
             nameof(HomeController.Upload),

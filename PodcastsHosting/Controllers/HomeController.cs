@@ -48,7 +48,7 @@ public class HomeController : Controller
 
     [HttpPost]
     [Authorize]
-    [RequestSizeLimit(512L * 1024 * 1024)]
+    [RequestSizeLimit(1024L * 1024 * 1024)]
     public async Task<IActionResult> Upload(
         IFormFile? file,
         string bookName,
