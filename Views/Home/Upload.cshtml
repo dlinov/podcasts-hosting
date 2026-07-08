@@ -73,7 +73,7 @@
                 <td>@audio.UploadUser?.Email</td>
                 <td>@audio.UploadTime.ToString("g")</td>
                 <td>
-                    <a asp-controller="Home" asp-action="Download" asp-route-id="@audio.Id" class="btn btn-secondary">Download</a>
+                    <a asp-controller="Home" asp-action="Download" asp-route-id="@audio.Id" asp-route-download="true" class="btn btn-secondary">Download</a>
                     <a asp-controller="Home" asp-action="Delete" asp-route-id="@audio.Id" class="btn btn-danger">Delete</a>
                 </td>
             </tr>
