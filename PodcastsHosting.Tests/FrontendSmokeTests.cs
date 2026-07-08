@@ -33,6 +33,41 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
         Assert.Contains("text/html", response.Content.Headers.ContentType?.MediaType);
     }
 
+    [Fact]
+    public async Task Login_WhenRegistrationIsClosed_DoesNotRenderRegisterLink()
+    {
+        using var client = _factory.CreateClient();
+
+        var html = await client.GetStringAsync("/Identity/Account/Login");
+
+        Assert.DoesNotContain("Register as a new user", html);
+    }
+
+    [Fact]
+    public async Task Register_WhenRegistrationIsClosed_RedirectsHome()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        using var response = await client.GetAsync("/Identity/Account/Register");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/", response.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
+    public async Task Layout_DoesNotRenderMissingPrivacyLink()
+    {
+        using var client = _factory.CreateClient();
+
+        var html = await client.GetStringAsync("/");
+
+        Assert.DoesNotContain("Home/Privacy", html);
+        Assert.DoesNotContain(">Privacy<", html);
+    }
+
     [Theory]
     [InlineData("/health")]
     [InlineData("/health/live")]
