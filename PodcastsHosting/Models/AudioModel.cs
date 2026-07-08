@@ -10,15 +10,15 @@ public class AudioModel
 
     [Required]
     [MaxLength(255)]
-    public string FileName { get; set; }
+    public required string FileName { get; set; }
 
     [Required]
     [MaxLength(255)]
-    public string FilePath { get; set; }
+    public required string FilePath { get; set; }
 
     [Required]
     [MaxLength(255)]
-    public string FileHash { get; set; }
+    public required string FileHash { get; set; }
 
     [Required]
     public long FileSize { get; set; }
