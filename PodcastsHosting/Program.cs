@@ -25,7 +25,7 @@ builder.Services.AddHttpLogging(options =>
     options.ResponseBodyLogLimit = 4096;
 });
 
-builder.Services.AddScoped<FileService>();
+builder.Services.AddScoped<IFileService, FileService>();
 
 // Configure the maximum request body size
 builder.Services.Configure<FormOptions>(options =>

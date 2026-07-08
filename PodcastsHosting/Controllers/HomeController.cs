@@ -14,13 +14,13 @@ public class HomeController : Controller
     private readonly ILogger<HomeController> _logger;
     private readonly IConfiguration _configuration;
     private readonly UserManager<IdentityUser> _userManager;
-    private readonly FileService _fileService;
+    private readonly IFileService _fileService;
 
     public HomeController(
         ILogger<HomeController> logger,
         IConfiguration configuration,
         UserManager<IdentityUser> userManager,
-        FileService fileService)
+        IFileService fileService)
     {
         _logger = logger;
         _configuration = configuration;

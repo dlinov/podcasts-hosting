@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using PodcastsHosting.Data;
 using PodcastsHosting.Models;
 
-public class FileService
+public class FileService : IFileService
 {
     private const string AccountName = "podcasthostingstorage";
     private const string ContainerName = "audiofiles";
