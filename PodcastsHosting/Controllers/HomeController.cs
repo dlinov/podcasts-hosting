@@ -133,8 +133,7 @@ public class HomeController : Controller
     {
         var channelTitle = _configuration["App:ChannelTitle"];
         var description = _configuration["App:ChannelDescription"];
-        var protocol = Request.IsHttps ? "https" : "http";
-        var baseUri = new Uri($"{protocol}://{Request.Host.ToUriComponent()}");
+        var baseUri = GetPublicBaseUri();
         var audioModels = await _fileService.ListAllAudios().ConfigureAwait(false);
         var itunesNs = XNamespace.Get("http://www.itunes.com/dtds/podcast-1.0.dtd");
         var podcastNs = XNamespace.Get("http://podcastindex.org/namespace/1.0");
@@ -180,6 +179,17 @@ public class HomeController : Controller
         );
 
         return Content(rss.ToString(), "application/rss+xml", Encoding.UTF8);
+    }
+
+    private Uri GetPublicBaseUri()
+    {
+        var publicBaseUrl = _configuration["App:PublicBaseUrl"];
+        if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicBaseUri))
+        {
+            throw new InvalidOperationException("App:PublicBaseUrl must be configured as an absolute URL.");
+        }
+
+        return publicBaseUri;
     }
 
     private static string ChooseContentTypeByExtension(string? extension)

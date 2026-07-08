@@ -28,8 +28,11 @@ Use `dotnet user-secrets`
 dotnet user-secrets init
 dotnet user-secrets set "ConnectionStrings:PodcastsHosting" "<some valid sql connection string>"
 dotnet user-secrets set "Storage:ConnectionString" "UseDevelopmentStorage=true;" # for local azurite
+dotnet user-secrets set "App:PublicBaseUrl" "https://localhost:5003/"
 dotnet ef database update
 ```
+
+`App:PublicBaseUrl` must be an absolute URL. The RSS feed uses it for feed, image, and audio enclosure links so podcast clients do not depend on proxy headers or the incoming `Host` header.
 
 ### Frontend libraries
 Frontend browser libraries are managed with [LibMan](https://learn.microsoft.com/aspnet/core/client-side/libman/) using the local dotnet tool manifest in `.config/dotnet-tools.json` and the pinned manifest at `PodcastsHosting/libman.json`.
