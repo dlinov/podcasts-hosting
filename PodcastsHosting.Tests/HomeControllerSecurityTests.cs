@@ -12,6 +12,23 @@ using PodcastsHosting.Services;
 
 public class HomeControllerSecurityTests
 {
+    private const long MaxUploadSizeBytes = 512L * 1024 * 1024;
+
+    [Fact]
+    public void Upload_PostRequestSizeLimit_Is512MiB()
+    {
+        var method = typeof(HomeController).GetMethod(
+            nameof(HomeController.Upload),
+            [typeof(IFormFile), typeof(string), typeof(string), typeof(string), typeof(int?)]);
+
+        Assert.NotNull(method);
+        var requestSizeLimit = Assert.Single(
+            method.GetCustomAttributesData(),
+            attribute => attribute.AttributeType == typeof(RequestSizeLimitAttribute));
+        var bytesArgument = Assert.Single(requestSizeLimit.ConstructorArguments);
+        Assert.Equal(MaxUploadSizeBytes, bytesArgument.Value);
+    }
+
     [Fact]
     public void Delete_IsPostOnlyAndRequiresAntiforgery()
     {
