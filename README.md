@@ -52,10 +52,16 @@ The app is available at `http://localhost:8080`. The compose setup provides:
 - Azurite Blob Storage on host port `10000`
 
 The app applies EF Core migrations on startup. `App:PublicBaseUrl` is set to `http://localhost:8080/`, so the local RSS feed uses compose-local URLs.
+The Azurite account key is configured through `AZURITE_ACCOUNT_KEY` and defaults to a local development key shared by the app and Azurite containers.
 
 Override the local SQL Server password if needed:
 ```
 MSSQL_SA_PASSWORD='Your_Strong_Password_123!' docker compose up --build
+```
+
+Override the local Azurite account key if needed:
+```
+AZURITE_ACCOUNT_KEY='<base64-account-key>' docker compose up --build
 ```
 
 Remove local compose data volumes:

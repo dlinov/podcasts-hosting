@@ -196,7 +196,7 @@ public static class AudioFileValidator
             return "Only MP3, AAC, M4A, and M4B audio files are supported.";
         }
 
-        if (!string.IsNullOrWhiteSpace(file.ContentType) && !SupportedContentTypes.Contains(file.ContentType))
+        if (!string.IsNullOrWhiteSpace(file.ContentType) && !IsSupportedContentType(file.ContentType))
         {
             return "The uploaded file content type is not supported.";
         }
@@ -209,6 +209,12 @@ public static class AudioFileValidator
         return HasAudioSignature(extension, headerBytes)
             ? null
             : "The uploaded file does not look like a supported audio file.";
+    }
+
+    private static bool IsSupportedContentType(string contentType)
+    {
+        return contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)
+               || SupportedContentTypes.Contains(contentType);
     }
 
     private static bool HasAudioSignature(string extension, ReadOnlySpan<byte> header)

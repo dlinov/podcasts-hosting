@@ -9,6 +9,7 @@ public class AudioFileValidatorTests
     [InlineData("episode.mp3", "audio/mpeg", new byte[] { (byte)'I', (byte)'D', (byte)'3', 4 })]
     [InlineData("episode.mp3", "audio/mpeg", new byte[] { 0xff, 0xfb, 0x90, 0x64 })]
     [InlineData("episode.aac", "audio/aac", new byte[] { 0xff, 0xf1, 0x50, 0x80 })]
+    [InlineData("episode.aac", "audio/vnd.dlna.adts", new byte[] { 0xff, 0xf1, 0x50, 0x80 })]
     [InlineData("episode.aac", "audio/aac", new byte[] { (byte)'A', (byte)'D', (byte)'I', (byte)'F' })]
     [InlineData("episode.m4a", "audio/mp4", new byte[] { 0, 0, 0, 24, (byte)'f', (byte)'t', (byte)'y', (byte)'p', (byte)'M', (byte)'4', (byte)'A', (byte)' ' })]
     [InlineData("episode.m4b", "audio/mp4", new byte[] { 0, 0, 0, 24, (byte)'f', (byte)'t', (byte)'y', (byte)'p', (byte)'M', (byte)'4', (byte)'B', (byte)' ' })]

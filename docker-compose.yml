@@ -16,7 +16,7 @@ services:
       App__PublicBaseUrl: http://localhost:8080/
       ConnectionStrings__PodcastsHosting: Server=sqlserver,1433;Database=PodcastsHosting;User Id=sa;Password=${MSSQL_SA_PASSWORD:-PodcastsHosting_dev_2026!};TrustServerCertificate=True;MultipleActiveResultSets=true
       DOTNET_GCHeapHardLimit: "0x18000000"
-      Storage__ConnectionString: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFeqCnf2qRr6zG0JoLGZrE9E+1Yp4uF6dx7E7ZydB7a6V7vI1FrW70B3kbFny3Yo7D2Q==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      Storage__ConnectionString: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=${AZURITE_ACCOUNT_KEY:-cG9kY2FzdHMtaG9zdGluZy1sb2NhbC1henVyaXRlLWFjY291bnQta2V5LTIwMjY=};BlobEndpoint=http://azurite:10000/devstoreaccount1;
     ports:
       - "8080:8080"
 
@@ -42,7 +42,9 @@ services:
     image: mcr.microsoft.com/azure-storage/azurite:latest
     mem_limit: 128m
     memswap_limit: 128m
-    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+    environment:
+      AZURITE_ACCOUNTS: devstoreaccount1:${AZURITE_ACCOUNT_KEY:-cG9kY2FzdHMtaG9zdGluZy1sb2NhbC1henVyaXRlLWFjY291bnQta2V5LTIwMjY=}
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck
     ports:
       - "10000:10000"
       - "10001:10001"
