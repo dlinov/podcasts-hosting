@@ -14,13 +14,13 @@ public class HomeController : Controller
     private readonly ILogger<HomeController> _logger;
     private readonly IConfiguration _configuration;
     private readonly UserManager<IdentityUser> _userManager;
-    private readonly FileService _fileService;
+    private readonly IFileService _fileService;
 
     public HomeController(
         ILogger<HomeController> logger,
         IConfiguration configuration,
         UserManager<IdentityUser> userManager,
-        FileService fileService)
+        IFileService fileService)
     {
         _logger = logger;
         _configuration = configuration;
@@ -87,7 +87,8 @@ public class HomeController : Controller
         return View(new AudioModelsViewModel(audios));
     }
 
-    public async Task<IActionResult> Download(Guid id)
+    [Route("audio/{id:guid}.{extension?}")]
+    public async Task<IActionResult> Download(Guid id, bool download = false)
     {
         var audioModel = await _fileService.GetAudioAsync(id);;
         if (audioModel == null)
@@ -97,11 +98,14 @@ public class HomeController : Controller
 
         try
         {
-            var extension = audioModel.Extension ?? ".mp3";
+            var extension = NormalizeExtension(audioModel.Extension);
             var contentType = ChooseContentTypeByExtension(extension);
             var fileDownloadName = $"{id}{extension}";
-            await using var stream = await _fileService.DownloadAudioAsync(id);
-            return File(stream, contentType, fileDownloadName, enableRangeProcessing: true);
+            var stream = await _fileService.OpenAudioReadStreamAsync(id);
+
+            return download
+                ? File(stream, contentType, fileDownloadName, enableRangeProcessing: true)
+                : File(stream, contentType, enableRangeProcessing: true);
         }
         catch (Exception ex)
         {
@@ -161,7 +165,7 @@ public class HomeController : Controller
                         new XElement("item",
                             new XElement("title", audioModel.FileName),
                             new XElement("enclosure",
-                                new XAttribute("url", $"{baseUri}Home/Download/{audioModel.Id}"),
+                                new XAttribute("url", new Uri(baseUri, $"audio/{audioModel.Id}{NormalizeExtension(audioModel.Extension)}")),
                                 new XAttribute("length", audioModel.FileSize),
                                 new XAttribute("type", ChooseContentTypeByExtension(audioModel.Extension))
                             ),
@@ -178,12 +182,19 @@ public class HomeController : Controller
 
     private static string ChooseContentTypeByExtension(string? extension)
     {
-        return extension switch
+        return NormalizeExtension(extension) switch
         {
             ".mp3" => "audio/mpeg",
-            ".m4a" => "audio/m4a",
-            ".m4b" => "audio/m4b", // not sure apple podcasts support this
+            ".m4a" => "audio/mp4",
+            ".m4b" => "audio/mp4",
             _ => "audio/mpeg"
         };
+    }
+
+    private static string NormalizeExtension(string? extension)
+    {
+        return string.IsNullOrWhiteSpace(extension)
+            ? ".mp3"
+            : extension.ToLowerInvariant();
     }
 }

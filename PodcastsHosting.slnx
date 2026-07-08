@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="PodcastsHosting/PodcastsHosting.csproj" />
+  <Project Path="PodcastsHosting.Tests/PodcastsHosting.Tests.csproj" />
+</Solution>

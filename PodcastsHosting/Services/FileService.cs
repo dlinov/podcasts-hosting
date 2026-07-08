@@ -2,16 +2,16 @@ using System.Security.Cryptography;
 
 namespace PodcastsHosting.Services;
 
-using System.Configuration;
 using System.Data.Common;
 using System.Text;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PodcastsHosting.Data;
 using PodcastsHosting.Models;
 
-public class FileService
+public class FileService : IFileService
 {
     private const string AccountName = "podcasthostingstorage";
     private const string ContainerName = "audiofiles";
@@ -27,7 +27,7 @@ public class FileService
         _logger = logger;
         _dbContext = dbContext;
         _connectionString = configuration["Storage:ConnectionString"] ??
-                            throw new ConfigurationErrorsException("No connection string found");
+                            throw new InvalidOperationException("No connection string found");
     }
 
     public Task<List<AudioModel>> ListAllAudios()
@@ -40,11 +40,10 @@ public class FileService
         return _dbContext.AudioModels.FindAsync(audioId);
     }
 
-    public async Task<Stream> DownloadAudioAsync(Guid audioId)
+    public async Task<Stream> OpenAudioReadStreamAsync(Guid audioId)
     {
         var blobClient = await BuildBlobClientAsync(audioId);
-        var blobDownloadInfo = await blobClient.DownloadAsync();
-        return blobDownloadInfo.Value.Content;
+        return await blobClient.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false));
     }
 
     public async Task<bool> DeleteAudioAsync(Guid audioId)
@@ -64,7 +63,7 @@ public class FileService
         string? chapterTitle, int? chapterNumber)
     {
         var audioId = Guid.NewGuid();
-        var extension = Path.GetExtension(file.FileName);
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         var customTitle = BuildTitle(bookName, bookSeries, chapterTitle, chapterNumber);
 
         var blobClient = await BuildBlobClientAsync(audioId);

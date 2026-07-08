@@ -7,10 +7,13 @@
       "type": "process",
       "args": [
         "build",
-        "${workspaceFolder}/PodcastsHosting.sln",
+        "${workspaceFolder}/PodcastsHosting.slnx",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary"
       ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "problemMatcher": "$msCompile"
     }
   ]
