@@ -63,3 +63,22 @@ cd ..
 dotnet test PodcastsHosting.slnx
 ```
 
+### Large upload stress test
+The normal test suite does not upload a large file. To check large multipart uploads manually, run the opt-in stress test with a .NET GC heap limit set before `dotnet test` starts:
+`0x18000000` is 402,653,184 bytes, or 384 MiB.
+```
+RUN_LARGE_UPLOAD_TESTS=true \
+DOTNET_GCHeapHardLimit=0x18000000 \
+dotnet test PodcastsHosting.Tests/PodcastsHosting.Tests.csproj --filter FullyQualifiedName~LargeUploadStressTests
+```
+
+The default generated upload size is 220 MiB. Override it for quick local validation:
+```
+RUN_LARGE_UPLOAD_TESTS=true \
+LARGE_UPLOAD_SIZE_MB=16 \
+DOTNET_GCHeapHardLimit=0x18000000 \
+dotnet test PodcastsHosting.Tests/PodcastsHosting.Tests.csproj --filter FullyQualifiedName~LargeUploadStressTests
+```
+
+This test uses a generated stream instead of storing the test file on disk and a fake upload service that drains the uploaded file stream to `Stream.Null`. Because `WebApplicationFactory` hosts the app in the test process, the heap limit applies to the test process and app together.
+
