@@ -165,6 +165,7 @@ public static class AudioFileValidator
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".mp3",
+        ".aac",
         ".m4a",
         ".m4b"
     };
@@ -173,11 +174,14 @@ public static class AudioFileValidator
     {
         "application/mp4",
         "application/octet-stream",
+        "audio/aac",
+        "audio/aacp",
         "audio/m4a",
         "audio/m4b",
         "audio/mp3",
         "audio/mp4",
         "audio/mpeg",
+        "audio/x-aac",
         "audio/x-m4a",
         "audio/x-m4b",
         "audio/x-mp3",
@@ -189,7 +193,7 @@ public static class AudioFileValidator
         var extension = Path.GetExtension(file.FileName);
         if (!SupportedExtensions.Contains(extension))
         {
-            return "Only MP3, M4A, and M4B audio files are supported.";
+            return "Only MP3, AAC, M4A, and M4B audio files are supported.";
         }
 
         if (!string.IsNullOrWhiteSpace(file.ContentType) && !SupportedContentTypes.Contains(file.ContentType))
@@ -212,6 +216,7 @@ public static class AudioFileValidator
         return extension.ToLowerInvariant() switch
         {
             ".mp3" => HasMp3Signature(header),
+            ".aac" => HasAacSignature(header),
             ".m4a" => HasIsoBaseMediaSignature(header, "M4A"),
             ".m4b" => HasIsoBaseMediaSignature(header, "M4B"),
             _ => false
@@ -226,6 +231,16 @@ public static class AudioFileValidator
         }
 
         return header.Length >= 2 && header[0] == 0xff && (header[1] & 0xe0) == 0xe0;
+    }
+
+    private static bool HasAacSignature(ReadOnlySpan<byte> header)
+    {
+        if (header.Length >= 4 && header[0] == 'A' && header[1] == 'D' && header[2] == 'I' && header[3] == 'F')
+        {
+            return true;
+        }
+
+        return header.Length >= 2 && header[0] == 0xff && (header[1] & 0xf6) == 0xf0;
     }
 
     private static bool HasIsoBaseMediaSignature(ReadOnlySpan<byte> header, string expectedBrand)
