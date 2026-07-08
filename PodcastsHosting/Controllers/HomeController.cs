@@ -63,6 +63,14 @@ public class HomeController : Controller
             return View(new AudioModelsViewModel(allAudios));
         }
 
+        var validationError = await PodcastsHosting.Services.AudioFileValidator.GetValidationErrorAsync(file);
+        if (validationError != null)
+        {
+            ModelState.AddModelError("File", validationError);
+            var allAudios = await _fileService.ListAllAudios().ConfigureAwait(false);
+            return View(new AudioModelsViewModel(allAudios));
+        }
+
         var user = await _userManager.GetUserAsync(User);
         if (user != null)
         {

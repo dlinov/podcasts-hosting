@@ -34,6 +34,8 @@ dotnet ef database update
 
 `App:PublicBaseUrl` must be an absolute URL. The RSS feed uses it for feed, image, and audio enclosure links so podcast clients do not depend on proxy headers or the incoming `Host` header.
 
+Uploads are limited to MP3, M4A, and M4B files. The app checks extension, browser-provided content type, and basic file signatures before uploading to storage.
+
 ### Frontend libraries
 Frontend browser libraries are managed with [LibMan](https://learn.microsoft.com/aspnet/core/client-side/libman/) using the local dotnet tool manifest in `.config/dotnet-tools.json` and the pinned manifest at `PodcastsHosting/libman.json`.
 

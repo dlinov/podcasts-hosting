@@ -68,6 +68,20 @@ public class HomeControllerSecurityTests
         Assert.Null(fileService.DeletedAudioId);
     }
 
+    [Fact]
+    public async Task Upload_WhenFileIsNotAudio_ReturnsModelErrorWithoutUploading()
+    {
+        var fileService = new DeletingFileService();
+        var controller = CreateController(fileService);
+        var file = CreateFormFile([(byte)'<', (byte)'h', (byte)'t', (byte)'m', (byte)'l'], "episode.mp3", "audio/mpeg");
+
+        var result = await controller.Upload(file, "Book", null, null, null);
+
+        Assert.IsType<ViewResult>(result);
+        Assert.False(controller.ModelState.IsValid);
+        Assert.False(fileService.UploadWasCalled);
+    }
+
     private static HomeController CreateController(IFileService fileService)
     {
         return new HomeController(
@@ -91,6 +105,16 @@ public class HomeControllerSecurityTests
         };
     }
 
+    private static IFormFile CreateFormFile(byte[] content, string fileName, string contentType)
+    {
+        var stream = new MemoryStream(content);
+        return new FormFile(stream, 0, content.Length, "file", fileName)
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = contentType
+        };
+    }
+
     private sealed class DeletingFileService : IFileService
     {
         private readonly Dictionary<Guid, AudioModel> _audioModels;
@@ -101,6 +125,8 @@ public class HomeControllerSecurityTests
         }
 
         public Guid? DeletedAudioId { get; private set; }
+
+    public bool UploadWasCalled { get; private set; }
 
         public Task<List<AudioModel>> ListAllAudios()
         {
@@ -132,7 +158,8 @@ public class HomeControllerSecurityTests
             string? chapterTitle,
             int? chapterNumber)
         {
-            throw new NotSupportedException();
+            UploadWasCalled = true;
+            return Task.CompletedTask;
         }
     }
 }

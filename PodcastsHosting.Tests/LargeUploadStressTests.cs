@@ -293,6 +293,7 @@ public class LargeUploadStressTests : IClassFixture<LargeUploadStressTests.Large
 
     private sealed class RepeatingByteStream : Stream
     {
+        private static readonly byte[] Mp3Header = [(byte)'I', (byte)'D', (byte)'3', 4, 0, 0, 0, 0, 0, 0];
         private readonly long _length;
         private long _position;
 
@@ -321,30 +322,35 @@ public class LargeUploadStressTests : IClassFixture<LargeUploadStressTests.Large
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if (_position >= _length)
-            {
-                return 0;
-            }
-
-            var bytesToRead = (int)Math.Min(count, _length - _position);
-            buffer.AsSpan(offset, bytesToRead).Fill(42);
-            _position += bytesToRead;
-            return bytesToRead;
+            return ReadInto(buffer.AsSpan(offset, count));
         }
 
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(ReadInto(buffer.Span));
+        }
 
+        private int ReadInto(Span<byte> buffer)
+        {
             if (_position >= _length)
             {
-                return ValueTask.FromResult(0);
+                return 0;
             }
 
             var bytesToRead = (int)Math.Min(buffer.Length, _length - _position);
-            buffer[..bytesToRead].Span.Fill(42);
+            var startPosition = _position;
+
+            for (var index = 0; index < bytesToRead; index++)
+            {
+                var absolutePosition = startPosition + index;
+                buffer[index] = absolutePosition < Mp3Header.Length
+                    ? Mp3Header[absolutePosition]
+                    : (byte)42;
+            }
+
             _position += bytesToRead;
-            return ValueTask.FromResult(bytesToRead);
+            return bytesToRead;
         }
 
         public override long Seek(long offset, SeekOrigin origin)
