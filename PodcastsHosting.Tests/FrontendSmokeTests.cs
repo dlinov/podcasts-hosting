@@ -6,8 +6,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using PodcastsHosting.Configuration;
 using PodcastsHosting.Data;
 using PodcastsHosting.Models;
 using PodcastsHosting.Services;
@@ -32,6 +35,32 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("text/html", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public void PodcastOptions_AreBoundFromConfiguration()
+    {
+        var options = _factory.Services.GetRequiredService<IOptions<PodcastOptions>>().Value;
+
+        Assert.Equal("Audiobooks", options.ChannelTitle);
+        Assert.Equal("Audiobooks channel", options.ChannelDescription);
+        Assert.Equal(new Uri("https://podcast-hosting-dffbg7bsc4hvgbax.polandcentral-01.azurewebsites.net/"), options.PublicBaseUrl);
+        Assert.False(options.RegistrationOpen);
+    }
+
+    [Fact]
+    public void PodcastOptions_WithRelativePublicBaseUrl_FailOnStartup()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, configuration) =>
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["App:PublicBaseUrl"] = "/relative"
+                })));
+
+        var exception = Assert.Throws<OptionsValidationException>(() => factory.CreateClient());
+
+        Assert.Contains("App:PublicBaseUrl", exception.Message);
     }
 
     [Fact]

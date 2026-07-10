@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using PodcastsHosting.Configuration;
 using PodcastsHosting.Controllers;
 using PodcastsHosting.Models;
 using PodcastsHosting.Services;
@@ -106,7 +108,12 @@ public class HomeControllerSecurityTests
     {
         return new HomeController(
             NullLogger<HomeController>.Instance,
-            configuration: null!,
+            Options.Create(new PodcastOptions
+            {
+                ChannelTitle = "Test Podcast",
+                ChannelDescription = "Test feed",
+                PublicBaseUrl = new Uri("https://podcasts.example/")
+            }),
             new TestUserManager(),
             fileService)
         {

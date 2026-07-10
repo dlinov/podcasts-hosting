@@ -6,24 +6,26 @@ using System.Xml.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using PodcastsHosting.Configuration;
 using PodcastsHosting.Models;
 using PodcastsHosting.Services;
 
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
-    private readonly IConfiguration _configuration;
+    private readonly PodcastOptions _podcastOptions;
     private readonly UserManager<IdentityUser> _userManager;
     private readonly IFileService _fileService;
 
     public HomeController(
         ILogger<HomeController> logger,
-        IConfiguration configuration,
+        IOptions<PodcastOptions> podcastOptions,
         UserManager<IdentityUser> userManager,
         IFileService fileService)
     {
         _logger = logger;
-        _configuration = configuration;
+        _podcastOptions = podcastOptions.Value;
         _userManager = userManager;
         _fileService = fileService;
     }
@@ -142,9 +144,7 @@ public class HomeController : Controller
     [Route("feed.rss")]
     public async Task<IActionResult> Rss()
     {
-        var channelTitle = _configuration["App:ChannelTitle"];
-        var description = _configuration["App:ChannelDescription"];
-        var baseUri = GetPublicBaseUri();
+        var baseUri = _podcastOptions.PublicBaseUrl;
         var audioModels = await _fileService.ListAllAudios();
         var itunesNs = XNamespace.Get("http://www.itunes.com/dtds/podcast-1.0.dtd");
         var podcastNs = XNamespace.Get("http://podcastindex.org/namespace/1.0");
@@ -161,9 +161,9 @@ public class HomeController : Controller
                         new XAttribute("href", $"{baseUri}feed.rss"),
                         new XAttribute("rel", "self"),
                         new XAttribute("type", "application/rss+xml")),
-                    new XElement("title", channelTitle),
+                    new XElement("title", _podcastOptions.ChannelTitle),
                     new XElement("link", baseUri),
-                    new XElement("description", description),
+                    new XElement("description", _podcastOptions.ChannelDescription),
                     new XElement("language", "ru-ru"),
                     new XElement(itunesNs + "category",
                         new XAttribute("text", "Arts"),
@@ -190,17 +190,6 @@ public class HomeController : Controller
         );
 
         return Content(rss.ToString(), "application/rss+xml", Encoding.UTF8);
-    }
-
-    private Uri GetPublicBaseUri()
-    {
-        var publicBaseUrl = _configuration["App:PublicBaseUrl"];
-        if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicBaseUri))
-        {
-            throw new InvalidOperationException("App:PublicBaseUrl must be configured as an absolute URL.");
-        }
-
-        return publicBaseUri;
     }
 
     private static string ChooseContentTypeByExtension(string? extension)

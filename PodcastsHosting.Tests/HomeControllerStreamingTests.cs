@@ -7,10 +7,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
+using PodcastsHosting.Configuration;
 using PodcastsHosting.Controllers;
 using PodcastsHosting.Models;
 using PodcastsHosting.Services;
@@ -98,14 +99,12 @@ public class HomeControllerStreamingTests
 
     private static HomeController CreateController(IFileService fileService)
     {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["App:ChannelTitle"] = "Test Podcast",
-                ["App:ChannelDescription"] = "Test feed",
-                ["App:PublicBaseUrl"] = "https://podcasts.example/"
-            })
-            .Build();
+        var podcastOptions = Options.Create(new PodcastOptions
+        {
+            ChannelTitle = "Test Podcast",
+            ChannelDescription = "Test feed",
+            PublicBaseUrl = new Uri("https://podcasts.example/")
+        });
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Scheme = "http";
@@ -113,7 +112,7 @@ public class HomeControllerStreamingTests
 
         return new HomeController(
             NullLogger<HomeController>.Instance,
-            configuration,
+            podcastOptions,
             userManager: null!,
             fileService)
         {
