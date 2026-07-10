@@ -1,9 +1,12 @@
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
+using PodcastsHosting.Configuration;
 using PodcastsHosting.Data;
 using PodcastsHosting.Services;
 
@@ -11,8 +14,19 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddLogging();
+builder.Services.AddOptions<PodcastOptions>()
+    .BindConfiguration(PodcastOptions.SectionName)
+    .ValidateDataAnnotations()
+    .Validate(
+        options => options.PublicBaseUrl is { IsAbsoluteUri: true }
+                   && (options.PublicBaseUrl.Scheme == Uri.UriSchemeHttp
+                       || options.PublicBaseUrl.Scheme == Uri.UriSchemeHttps),
+        "App:PublicBaseUrl must be an absolute HTTP or HTTPS URL.")
+    .ValidateOnStart();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(builder.Configuration.GetConnectionString("PodcastsHosting")));
+            options.UseSqlServer(
+                builder.Configuration.GetConnectionString("PodcastsHosting"),
+                sqlOptions => sqlOptions.EnableRetryOnFailure()));
 builder.Services.AddDefaultIdentity<IdentityUser>(options =>
     {
         options.Lockout.AllowedForNewUsers = true;
@@ -35,7 +49,16 @@ builder.Services.AddHttpLogging(options =>
     options.ResponseBodyLogLimit = 4096;
 });
 
-builder.Services.AddScoped<IFileService, FileService>();
+builder.Services.AddSingleton(serviceProvider =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var connectionString = configuration["Storage:ConnectionString"]
+                           ?? throw new InvalidOperationException("Storage:ConnectionString is not configured.");
+    return new BlobServiceClient(connectionString);
+});
+builder.Services.AddSingleton<IAudioBlobStorage, AudioBlobStorage>();
+builder.Services.AddScoped<IAudioService, AudioService>();
+builder.Services.AddSingleton<PodcastFeedBuilder>();
 
 // Configure the maximum request body size
 builder.Services.Configure<FormOptions>(options =>
@@ -51,11 +74,13 @@ if (!app.Environment.IsEnvironment("Testing"))
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-    var appSettings = config.GetSection("App");
-    var appSettingsAsString = string.Join("; ",
-        appSettings.AsEnumerable().Select(x => x.ToString()));
-    logger.LogInformation("Current app settings: {Settings}", appSettingsAsString);
+    var podcastOptions = scope.ServiceProvider.GetRequiredService<IOptions<PodcastOptions>>().Value;
+    logger.LogInformation(
+        "Current app settings: ChannelTitle={ChannelTitle}; ChannelDescription={ChannelDescription}; PublicBaseUrl={PublicBaseUrl}; RegistrationOpen={RegistrationOpen}",
+        podcastOptions.ChannelTitle,
+        podcastOptions.ChannelDescription,
+        podcastOptions.PublicBaseUrl,
+        podcastOptions.RegistrationOpen);
     logger.LogInformation(
         "Is database accessible: {}",
         dbContext.Database.CanConnect());

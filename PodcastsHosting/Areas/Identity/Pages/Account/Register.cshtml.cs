@@ -18,6 +18,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using PodcastsHosting.Configuration;
 
 namespace PodcastsHosting.Areas.Identity.Pages.Account
 {
@@ -29,7 +31,7 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
         private readonly IUserEmailStore<IdentityUser> _emailStore;
         private readonly ILogger<RegisterModel> _logger;
         private readonly IEmailSender _emailSender;
-        private readonly IConfiguration _configuration;
+        private readonly PodcastOptions _podcastOptions;
 
         public RegisterModel(
             UserManager<IdentityUser> userManager,
@@ -37,7 +39,7 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
             SignInManager<IdentityUser> signInManager,
             ILogger<RegisterModel> logger,
             IEmailSender emailSender,
-            IConfiguration configuration)
+            IOptions<PodcastOptions> podcastOptions)
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -45,7 +47,7 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
             _signInManager = signInManager;
             _logger = logger;
             _emailSender = emailSender;
-            _configuration = configuration;
+            _podcastOptions = podcastOptions.Value;
         }
 
         /// <summary>
@@ -105,8 +107,7 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
 
         public async Task<IActionResult> OnGetAsync(string returnUrl = null)
         {
-            var isRegistrationOpen = _configuration.GetValue<bool>("App:RegistrationOpen");
-            if (!isRegistrationOpen)
+            if (!_podcastOptions.RegistrationOpen)
             {
                 return LocalRedirect(Url.Content("~/"));
             }
@@ -119,8 +120,7 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
             // kind of hack to prevent registration on publicly available website
-            var isRegistrationOpen = _configuration.GetValue<bool>("App:RegistrationOpen");
-            if (!isRegistrationOpen)
+            if (!_podcastOptions.RegistrationOpen)
             {
                 return RedirectToPage("~/");
             }

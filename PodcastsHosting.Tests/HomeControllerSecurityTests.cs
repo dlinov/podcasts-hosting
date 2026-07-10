@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using PodcastsHosting.Configuration;
 using PodcastsHosting.Controllers;
 using PodcastsHosting.Models;
 using PodcastsHosting.Services;
@@ -21,7 +23,7 @@ public class HomeControllerSecurityTests
     {
         var method = typeof(HomeController).GetMethod(
             nameof(HomeController.Upload),
-            [typeof(IFormFile), typeof(string), typeof(string), typeof(string), typeof(int?)]);
+            [typeof(UploadAudioRequest)]);
 
         Assert.NotNull(method);
         var requestSizeLimit = Assert.Single(
@@ -47,68 +49,73 @@ public class HomeControllerSecurityTests
     public async Task Delete_WhenAudioExists_RemovesAudioAndRedirectsToUpload()
     {
         var audioId = Guid.NewGuid();
-        var fileService = new DeletingFileService(CreateAudio(audioId));
-        var controller = CreateController(fileService);
+        var audioService = new DeletingAudioService(CreateAudio(audioId));
+        var controller = CreateController(audioService);
 
         var result = await controller.Delete(audioId);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(HomeController.Upload), redirect.ActionName);
-        Assert.Equal(audioId, fileService.DeletedAudioId);
-        Assert.Empty(await fileService.ListAllAudios());
+        Assert.Equal(audioId, audioService.DeletedAudioId);
+        Assert.Empty(await audioService.ListAllAudios());
     }
 
     [Fact]
     public async Task Delete_WhenAudioDoesNotExist_ReturnsNotFoundWithoutDeleting()
     {
-        var fileService = new DeletingFileService();
-        var controller = CreateController(fileService);
+        var audioService = new DeletingAudioService();
+        var controller = CreateController(audioService);
 
         var result = await controller.Delete(Guid.NewGuid());
 
         Assert.IsType<NotFoundObjectResult>(result);
-        Assert.Null(fileService.DeletedAudioId);
+        Assert.Null(audioService.DeletedAudioId);
     }
 
     [Fact]
     public async Task Upload_WhenFileIsNotAudio_ReturnsModelErrorWithoutUploading()
     {
-        var fileService = new DeletingFileService();
-        var controller = CreateController(fileService);
+        var audioService = new DeletingAudioService();
+        var controller = CreateController(audioService);
         var file = CreateFormFile([(byte)'<', (byte)'h', (byte)'t', (byte)'m', (byte)'l'], "episode.mp3", "audio/mpeg");
 
-        var result = await controller.Upload(file, "Book", null, null, null);
+        var result = await controller.Upload(CreateUploadRequest(file));
 
         Assert.IsType<ViewResult>(result);
         Assert.False(controller.ModelState.IsValid);
-        Assert.False(fileService.UploadWasCalled);
+        Assert.False(audioService.UploadWasCalled);
     }
 
     [Fact]
     public async Task Upload_WhenUploadFails_DoesNotExposeRawExceptionMessage()
     {
-        var fileService = new DeletingFileService
+        var audioService = new DeletingAudioService
         {
             UploadException = new InvalidOperationException("secret storage connection string")
         };
-        var controller = CreateController(fileService);
+        var controller = CreateController(audioService);
         var file = CreateFormFile([(byte)'I', (byte)'D', (byte)'3', 4], "episode.mp3", "audio/mpeg");
 
-        var result = await controller.Upload(file, "Book", null, null, null);
+        var result = await controller.Upload(CreateUploadRequest(file));
 
         Assert.IsType<ViewResult>(result);
-        var error = Assert.Single(controller.ModelState["File"]!.Errors);
+        var error = Assert.Single(controller.ModelState["Upload.File"]!.Errors);
         Assert.Equal("The file could not be uploaded. Please try again later.", error.ErrorMessage);
         Assert.DoesNotContain("secret", error.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static HomeController CreateController(IFileService fileService)
+    private static HomeController CreateController(IAudioService audioService)
     {
         return new HomeController(
             NullLogger<HomeController>.Instance,
-            configuration: null!,
             new TestUserManager(),
-            fileService)
+            audioService,
+            new PodcastFeedBuilder(Options.Create(new PodcastOptions
+            {
+                ChannelTitle = "Test Podcast",
+                ChannelDescription = "Test feed",
+                PublicBaseUrl = new Uri("https://podcasts.example/")
+            })))
         {
             ControllerContext = new ControllerContext
             {
@@ -149,11 +156,20 @@ public class HomeControllerSecurityTests
         };
     }
 
-    private sealed class DeletingFileService : IFileService
+    private static UploadAudioRequest CreateUploadRequest(IFormFile file)
+    {
+        return new UploadAudioRequest
+        {
+            File = file,
+            BookName = "Book"
+        };
+    }
+
+    private sealed class DeletingAudioService : IAudioService
     {
         private readonly Dictionary<Guid, AudioModel> _audioModels;
 
-        public DeletingFileService(params AudioModel[] audioModels)
+        public DeletingAudioService(params AudioModel[] audioModels)
         {
             _audioModels = audioModels.ToDictionary(audio => audio.Id);
         }

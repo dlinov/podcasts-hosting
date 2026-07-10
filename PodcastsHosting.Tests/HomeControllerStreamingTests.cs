@@ -7,10 +7,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
+using PodcastsHosting.Configuration;
 using PodcastsHosting.Controllers;
 using PodcastsHosting.Models;
 using PodcastsHosting.Services;
@@ -22,7 +23,7 @@ public class HomeControllerStreamingTests
     {
         var audioId = Guid.NewGuid();
         var audio = CreateAudio(audioId, ".MP3");
-        var controller = CreateController(new FakeFileService([audio], Encoding.ASCII.GetBytes("0123456789")));
+        var controller = CreateController(new FakeAudioService([audio], Encoding.ASCII.GetBytes("0123456789")));
 
         var result = await controller.Download(audioId);
 
@@ -38,7 +39,7 @@ public class HomeControllerStreamingTests
     {
         var audioId = Guid.NewGuid();
         var audio = CreateAudio(audioId, ".mp3");
-        var controller = CreateController(new FakeFileService([audio], Encoding.ASCII.GetBytes("0123456789")));
+        var controller = CreateController(new FakeAudioService([audio], Encoding.ASCII.GetBytes("0123456789")));
         var result = Assert.IsType<FileStreamResult>(await controller.Download(audioId));
         await using var responseBody = new MemoryStream();
         var actionContext = CreateActionContext(responseBody, "bytes=2-5");
@@ -56,7 +57,7 @@ public class HomeControllerStreamingTests
     {
         var audioId = Guid.NewGuid();
         var audio = CreateAudio(audioId, ".m4b");
-        var controller = CreateController(new FakeFileService([audio], Encoding.ASCII.GetBytes("0123456789")));
+        var controller = CreateController(new FakeAudioService([audio], Encoding.ASCII.GetBytes("0123456789")));
 
         var result = await controller.Download(audioId, download: true);
 
@@ -71,7 +72,7 @@ public class HomeControllerStreamingTests
     {
         var audioId = Guid.NewGuid();
         var audio = CreateAudio(audioId, ".aac");
-        var controller = CreateController(new FakeFileService([audio], Encoding.ASCII.GetBytes("0123456789")));
+        var controller = CreateController(new FakeAudioService([audio], Encoding.ASCII.GetBytes("0123456789")));
 
         var result = await controller.Download(audioId);
 
@@ -84,7 +85,7 @@ public class HomeControllerStreamingTests
     {
         var audioId = Guid.NewGuid();
         var audio = CreateAudio(audioId, ".m4b");
-        var controller = CreateController(new FakeFileService([audio], Encoding.ASCII.GetBytes("0123456789")));
+        var controller = CreateController(new FakeAudioService([audio], Encoding.ASCII.GetBytes("0123456789")));
 
         var result = await controller.Rss();
 
@@ -96,16 +97,14 @@ public class HomeControllerStreamingTests
         Assert.Equal(audio.FileSize.ToString(), enclosure.Attribute("length")?.Value);
     }
 
-    private static HomeController CreateController(IFileService fileService)
+    private static HomeController CreateController(IAudioService audioService)
     {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["App:ChannelTitle"] = "Test Podcast",
-                ["App:ChannelDescription"] = "Test feed",
-                ["App:PublicBaseUrl"] = "https://podcasts.example/"
-            })
-            .Build();
+        var podcastOptions = Options.Create(new PodcastOptions
+        {
+            ChannelTitle = "Test Podcast",
+            ChannelDescription = "Test feed",
+            PublicBaseUrl = new Uri("https://podcasts.example/")
+        });
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Scheme = "http";
@@ -113,9 +112,9 @@ public class HomeControllerStreamingTests
 
         return new HomeController(
             NullLogger<HomeController>.Instance,
-            configuration,
             userManager: null!,
-            fileService)
+            audioService,
+            new PodcastFeedBuilder(podcastOptions))
         {
             ControllerContext = new ControllerContext
             {
@@ -160,12 +159,12 @@ public class HomeControllerStreamingTests
         };
     }
 
-    private sealed class FakeFileService : IFileService
+    private sealed class FakeAudioService : IAudioService
     {
         private readonly List<AudioModel> _audioModels;
         private readonly byte[] _content;
 
-        public FakeFileService(List<AudioModel> audioModels, byte[] content)
+        public FakeAudioService(List<AudioModel> audioModels, byte[] content)
         {
             _audioModels = audioModels;
             _content = content;

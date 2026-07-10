@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using PodcastsHosting.Configuration;
 
 namespace PodcastsHosting.Areas.Identity.Pages.Account
 {
@@ -21,13 +23,16 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
     {
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
-        private readonly IConfiguration _configuration;
+        private readonly PodcastOptions _podcastOptions;
 
-        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger, IConfiguration configuration)
+        public LoginModel(
+            SignInManager<IdentityUser> signInManager,
+            ILogger<LoginModel> logger,
+            IOptions<PodcastOptions> podcastOptions)
         {
             _signInManager = signInManager;
             _logger = logger;
-            _configuration = configuration;
+            _podcastOptions = podcastOptions.Value;
         }
 
         /// <summary>
@@ -102,7 +107,7 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
 
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
-            IsRegistrationOpen = _configuration.GetValue<bool>("App:RegistrationOpen");
+            IsRegistrationOpen = _podcastOptions.RegistrationOpen;
 
             ReturnUrl = returnUrl;
         }
@@ -112,7 +117,7 @@ namespace PodcastsHosting.Areas.Identity.Pages.Account
             returnUrl ??= Url.Content("~/");
 
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
-            IsRegistrationOpen = _configuration.GetValue<bool>("App:RegistrationOpen");
+            IsRegistrationOpen = _podcastOptions.RegistrationOpen;
 
             if (ModelState.IsValid)
             {
