@@ -30,6 +30,23 @@ public class LargeUploadStressTests : IClassFixture<LargeUploadStressTests.Large
     }
 
     [Fact]
+    public async Task Upload_TypedRequestBindsMultipartFields()
+    {
+        const long uploadSizeBytes = 1024;
+        var probe = _factory.Services.GetRequiredService<LargeUploadProbe>();
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        using var multipartContent = CreateMultipartContent(uploadSizeBytes);
+
+        using var response = await client.PostAsync("/Home/Upload", multipartContent);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(uploadSizeBytes, probe.UploadedBytes);
+    }
+
+    [Fact]
     [Trait("Category", "Stress")]
     public async Task Upload_LargeFile_WhenStressTestEnabled_CompletesWithoutOutOfMemory()
     {
@@ -79,10 +96,10 @@ public class LargeUploadStressTests : IClassFixture<LargeUploadStressTests.Large
         var fileContent = new StreamContent(new RepeatingByteStream(uploadSizeBytes), bufferSize: 64 * 1024);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mpeg");
 
-        content.Add(fileContent, "file", "large-upload-test.mp3");
-        content.Add(new StringContent("Large Upload Test"), "bookName");
-        content.Add(new StringContent(string.Empty), "bookSeries");
-        content.Add(new StringContent(string.Empty), "chapterTitle");
+        content.Add(fileContent, "Upload.File", "large-upload-test.mp3");
+        content.Add(new StringContent("Large Upload Test"), "Upload.BookName");
+        content.Add(new StringContent(string.Empty), "Upload.BookSeries");
+        content.Add(new StringContent(string.Empty), "Upload.ChapterTitle");
 
         return content;
     }

@@ -21,7 +21,7 @@ public class HomeControllerSecurityTests
     {
         var method = typeof(HomeController).GetMethod(
             nameof(HomeController.Upload),
-            [typeof(IFormFile), typeof(string), typeof(string), typeof(string), typeof(int?)]);
+            [typeof(UploadAudioRequest)]);
 
         Assert.NotNull(method);
         var requestSizeLimit = Assert.Single(
@@ -77,7 +77,7 @@ public class HomeControllerSecurityTests
         var controller = CreateController(fileService);
         var file = CreateFormFile([(byte)'<', (byte)'h', (byte)'t', (byte)'m', (byte)'l'], "episode.mp3", "audio/mpeg");
 
-        var result = await controller.Upload(file, "Book", null, null, null);
+        var result = await controller.Upload(CreateUploadRequest(file));
 
         Assert.IsType<ViewResult>(result);
         Assert.False(controller.ModelState.IsValid);
@@ -94,10 +94,10 @@ public class HomeControllerSecurityTests
         var controller = CreateController(fileService);
         var file = CreateFormFile([(byte)'I', (byte)'D', (byte)'3', 4], "episode.mp3", "audio/mpeg");
 
-        var result = await controller.Upload(file, "Book", null, null, null);
+        var result = await controller.Upload(CreateUploadRequest(file));
 
         Assert.IsType<ViewResult>(result);
-        var error = Assert.Single(controller.ModelState["File"]!.Errors);
+        var error = Assert.Single(controller.ModelState["Upload.File"]!.Errors);
         Assert.Equal("The file could not be uploaded. Please try again later.", error.ErrorMessage);
         Assert.DoesNotContain("secret", error.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
@@ -146,6 +146,15 @@ public class HomeControllerSecurityTests
         {
             Headers = new HeaderDictionary(),
             ContentType = contentType
+        };
+    }
+
+    private static UploadAudioRequest CreateUploadRequest(IFormFile file)
+    {
+        return new UploadAudioRequest
+        {
+            File = file,
+            BookName = "Book"
         };
     }
 

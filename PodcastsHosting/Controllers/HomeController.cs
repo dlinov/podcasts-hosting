@@ -49,24 +49,19 @@ public class HomeController : Controller
     [HttpPost]
     [Authorize]
     [RequestSizeLimit(1024L * 1024 * 1024)]
-    public async Task<IActionResult> Upload(
-        IFormFile? file,
-        string bookName,
-        string? bookSeries,
-        string? chapterTitle,
-        int? chapterNumber)
+    public async Task<IActionResult> Upload([Bind(Prefix = nameof(AudioModelsViewModel.Upload))] UploadAudioRequest request)
     {
-        if (file == null || file.Length == 0)
+        if (request.File == null || request.File.Length == 0)
         {
-            ModelState.AddModelError("File", "Please upload a file.");
+            ModelState.AddModelError($"{nameof(AudioModelsViewModel.Upload)}.{nameof(UploadAudioRequest.File)}", "Please upload a file.");
             var allAudios = await _fileService.ListAllAudios();
             return View(new AudioModelsViewModel(allAudios));
         }
 
-        var validationError = await PodcastsHosting.Services.AudioFileValidator.GetValidationErrorAsync(file);
+        var validationError = await AudioFileValidator.GetValidationErrorAsync(request.File);
         if (validationError != null)
         {
-            ModelState.AddModelError("File", validationError);
+            ModelState.AddModelError($"{nameof(AudioModelsViewModel.Upload)}.{nameof(UploadAudioRequest.File)}", validationError);
             var allAudios = await _fileService.ListAllAudios();
             return View(new AudioModelsViewModel(allAudios));
         }
@@ -76,7 +71,13 @@ public class HomeController : Controller
         {
             try
             {
-                await _fileService.UploadAudioAsync(user, file, bookName, bookSeries, chapterTitle, chapterNumber);
+                await _fileService.UploadAudioAsync(
+                    user,
+                    request.File,
+                    request.BookName,
+                    request.BookSeries,
+                    request.ChapterTitle,
+                    request.ChapterNumber);
                 ViewBag.Message = "File uploaded successfully.";
                 var allAudios = await _fileService.ListAllAudios();
                 return View(new AudioModelsViewModel(allAudios));
@@ -84,13 +85,15 @@ public class HomeController : Controller
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error uploading file: {Message}. Details: {Details}", ex.Message, ex.ToString());
-                ModelState.AddModelError("File", "The file could not be uploaded. Please try again later.");
+                ModelState.AddModelError(
+                    $"{nameof(AudioModelsViewModel.Upload)}.{nameof(UploadAudioRequest.File)}",
+                    "The file could not be uploaded. Please try again later.");
                 var allAudios = await _fileService.ListAllAudios();
                 return View(new AudioModelsViewModel(allAudios));
             }
         }
 
-        ModelState.AddModelError("File", "No user found.");
+        ModelState.AddModelError($"{nameof(AudioModelsViewModel.Upload)}.{nameof(UploadAudioRequest.File)}", "No user found.");
         var audios = await _fileService.ListAllAudios();
         return View(new AudioModelsViewModel(audios));
     }
