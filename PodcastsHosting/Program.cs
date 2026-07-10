@@ -49,6 +49,7 @@ builder.Services.AddHttpLogging(options =>
 });
 
 builder.Services.AddScoped<IFileService, FileService>();
+builder.Services.AddSingleton<PodcastFeedBuilder>();
 
 // Configure the maximum request body size
 builder.Services.Configure<FormOptions>(options =>

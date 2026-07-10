@@ -108,14 +108,14 @@ public class HomeControllerSecurityTests
     {
         return new HomeController(
             NullLogger<HomeController>.Instance,
-            Options.Create(new PodcastOptions
+            new TestUserManager(),
+            fileService,
+            new PodcastFeedBuilder(Options.Create(new PodcastOptions
             {
                 ChannelTitle = "Test Podcast",
                 ChannelDescription = "Test feed",
                 PublicBaseUrl = new Uri("https://podcasts.example/")
-            }),
-            new TestUserManager(),
-            fileService)
+            })))
         {
             ControllerContext = new ControllerContext
             {

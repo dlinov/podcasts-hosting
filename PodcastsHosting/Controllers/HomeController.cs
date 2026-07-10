@@ -2,32 +2,29 @@ namespace PodcastsHosting.Controllers;
 
 using System.Diagnostics;
 using System.Text;
-using System.Xml.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using PodcastsHosting.Configuration;
 using PodcastsHosting.Models;
 using PodcastsHosting.Services;
 
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
-    private readonly PodcastOptions _podcastOptions;
     private readonly UserManager<IdentityUser> _userManager;
     private readonly IFileService _fileService;
+    private readonly PodcastFeedBuilder _podcastFeedBuilder;
 
     public HomeController(
         ILogger<HomeController> logger,
-        IOptions<PodcastOptions> podcastOptions,
         UserManager<IdentityUser> userManager,
-        IFileService fileService)
+        IFileService fileService,
+        PodcastFeedBuilder podcastFeedBuilder)
     {
         _logger = logger;
-        _podcastOptions = podcastOptions.Value;
         _userManager = userManager;
         _fileService = fileService;
+        _podcastFeedBuilder = podcastFeedBuilder;
     }
 
     public IActionResult Index()
@@ -144,50 +141,8 @@ public class HomeController : Controller
     [Route("feed.rss")]
     public async Task<IActionResult> Rss()
     {
-        var baseUri = _podcastOptions.PublicBaseUrl;
         var audioModels = await _fileService.ListAllAudios();
-        var itunesNs = XNamespace.Get("http://www.itunes.com/dtds/podcast-1.0.dtd");
-        var podcastNs = XNamespace.Get("http://podcastindex.org/namespace/1.0");
-        var atomNs = XNamespace.Get("http://www.w3.org/2005/Atom");
-        var rss = new XDocument(
-            new XDeclaration("1.0", "utf-8", null),
-            new XElement("rss",
-                new XAttribute("version", "2.0"),
-                new XAttribute(XNamespace.Xmlns + "itunes", itunesNs),
-                new XAttribute(XNamespace.Xmlns + "podcast", podcastNs),
-                new XAttribute(XNamespace.Xmlns + "atom", atomNs),
-                new XElement("channel",
-                    new XElement(atomNs + "link",
-                        new XAttribute("href", $"{baseUri}feed.rss"),
-                        new XAttribute("rel", "self"),
-                        new XAttribute("type", "application/rss+xml")),
-                    new XElement("title", _podcastOptions.ChannelTitle),
-                    new XElement("link", baseUri),
-                    new XElement("description", _podcastOptions.ChannelDescription),
-                    new XElement("language", "ru-ru"),
-                    new XElement(itunesNs + "category",
-                        new XAttribute("text", "Arts"),
-                        new XElement(itunesNs + "category",
-                            new XAttribute("text", "Books")
-                        )
-                    ),
-                    new XElement(itunesNs + "explicit", "no"),
-                    new XElement(itunesNs + "image", new XAttribute("href", $"{baseUri}images/logo.jpg")),
-                    audioModels.Select(audioModel =>
-                        new XElement("item",
-                            new XElement("title", audioModel.FileName),
-                            new XElement("enclosure",
-                                new XAttribute("url", new Uri(baseUri, $"audio/{audioModel.Id}{NormalizeExtension(audioModel.Extension)}")),
-                                new XAttribute("length", audioModel.FileSize),
-                                new XAttribute("type", ChooseContentTypeByExtension(audioModel.Extension))
-                            ),
-                            new XElement("guid", audioModel.Id),
-                            new XElement("pubDate", audioModel.UploadTime.ToString("R"))
-                        )
-                    )
-                )
-            )
-        );
+        var rss = _podcastFeedBuilder.Build(audioModels);
 
         return Content(rss.ToString(), "application/rss+xml", Encoding.UTF8);
     }

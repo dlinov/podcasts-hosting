@@ -112,9 +112,9 @@ public class HomeControllerStreamingTests
 
         return new HomeController(
             NullLogger<HomeController>.Instance,
-            podcastOptions,
             userManager: null!,
-            fileService)
+            fileService,
+            new PodcastFeedBuilder(podcastOptions))
         {
             ControllerContext = new ControllerContext
             {
