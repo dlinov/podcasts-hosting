@@ -12,7 +12,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddLogging();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(builder.Configuration.GetConnectionString("PodcastsHosting")));
+            options.UseSqlServer(
+                builder.Configuration.GetConnectionString("PodcastsHosting"),
+                sqlOptions => sqlOptions.EnableRetryOnFailure()));
 builder.Services.AddDefaultIdentity<IdentityUser>(options =>
     {
         options.Lockout.AllowedForNewUsers = true;

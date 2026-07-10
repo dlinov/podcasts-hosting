@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using PodcastsHosting.Data;
 using PodcastsHosting.Models;
 using PodcastsHosting.Services;
 
@@ -80,6 +81,15 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Healthy", content);
+    }
+
+    [Fact]
+    public void SqlServer_UsesRetryingExecutionStrategy()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        Assert.True(dbContext.Database.CreateExecutionStrategy().RetriesOnFailure);
     }
 
     [Theory]

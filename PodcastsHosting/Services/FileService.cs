@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 
 namespace PodcastsHosting.Services;
 
+using System.Buffers.Binary;
 using System.Data.Common;
 using System.Text;
 using Azure.Storage;
@@ -34,7 +35,11 @@ public class FileService : IFileService
 
     public Task<List<AudioModel>> ListAllAudios()
     {
-        return _dbContext.AudioModels.OrderBy(x => x.UploadTime).ToListAsync();
+        return _dbContext.AudioModels
+            .AsNoTracking()
+            .Include(audio => audio.UploadUser)
+            .OrderBy(audio => audio.UploadTime)
+            .ToListAsync();
     }
 
     public ValueTask<AudioModel?> GetAudioAsync(Guid audioId)
@@ -202,6 +207,19 @@ public static class AudioFileValidator
         "audio/x-mpeg"
     };
 
+    private static readonly HashSet<string> SupportedIsoBaseMediaBrands = new(StringComparer.Ordinal)
+    {
+        "M4A ",
+        "M4B ",
+        "iso2",
+        "iso5",
+        "iso6",
+        "isom",
+        "mp41",
+        "mp42",
+        "qt  "
+    };
+
     public static async Task<string?> GetValidationErrorAsync(IFormFile file)
     {
         var extension = Path.GetExtension(file.FileName);
@@ -237,8 +255,8 @@ public static class AudioFileValidator
         {
             ".mp3" => HasMp3Signature(header),
             ".aac" => HasAacSignature(header),
-            ".m4a" => HasIsoBaseMediaSignature(header, "M4A"),
-            ".m4b" => HasIsoBaseMediaSignature(header, "M4B"),
+            ".m4a" => HasIsoBaseMediaAudioSignature(header),
+            ".m4b" => HasIsoBaseMediaAudioSignature(header),
             _ => false
         };
     }
@@ -263,14 +281,38 @@ public static class AudioFileValidator
         return header.Length >= 2 && header[0] == 0xff && (header[1] & 0xf6) == 0xf0;
     }
 
-    private static bool HasIsoBaseMediaSignature(ReadOnlySpan<byte> header, string expectedBrand)
+    private static bool HasIsoBaseMediaAudioSignature(ReadOnlySpan<byte> header)
     {
         if (header.Length < 12 || header[4] != 'f' || header[5] != 't' || header[6] != 'y' || header[7] != 'p')
         {
             return false;
         }
 
-        var headerText = Encoding.ASCII.GetString(header);
-        return headerText.Contains(expectedBrand, StringComparison.Ordinal);
+        var declaredBoxSize = BinaryPrimitives.ReadUInt32BigEndian(header[..4]);
+        if (declaredBoxSize < 12)
+        {
+            return false;
+        }
+
+        var availableBoxSize = (int)Math.Min(declaredBoxSize, (uint)header.Length);
+        if (IsSupportedIsoBaseMediaBrand(header.Slice(8, 4)))
+        {
+            return true;
+        }
+
+        for (var offset = 16; offset + 4 <= availableBoxSize; offset += 4)
+        {
+            if (IsSupportedIsoBaseMediaBrand(header.Slice(offset, 4)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsSupportedIsoBaseMediaBrand(ReadOnlySpan<byte> brand)
+    {
+        return SupportedIsoBaseMediaBrands.Contains(Encoding.ASCII.GetString(brand));
     }
 }
