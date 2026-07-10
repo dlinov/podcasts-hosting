@@ -100,7 +100,7 @@ public class HomeController : Controller
     [Route("audio/{id:guid}.{extension?}")]
     public async Task<IActionResult> Download(Guid id, bool download = false)
     {
-        var audioModel = await _audioService.GetAudioAsync(id);;
+        var audioModel = await _audioService.GetAudioAsync(id);
         if (audioModel == null)
         {
             return NotFound($"No audio with id {id} was found.");
