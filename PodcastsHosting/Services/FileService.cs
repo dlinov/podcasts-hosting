@@ -4,9 +4,6 @@ namespace PodcastsHosting.Services;
 
 using System.Data.Common;
 using System.Text;
-using Azure.Storage;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PodcastsHosting.Data;
@@ -14,22 +11,18 @@ using PodcastsHosting.Models;
 
 public class FileService : IFileService
 {
-    private const string AccountName = "podcasthostingstorage";
-    private const string ContainerName = "audiofiles";
-    private const int BlobTransferChunkSize = 4 * 1024 * 1024;
     private readonly ILogger<FileService> _logger;
     private readonly ApplicationDbContext _dbContext;
-    private readonly string _connectionString;
+    private readonly IAudioBlobStorage _blobStorage;
 
     public FileService(
         ILogger<FileService> logger,
-        IConfiguration configuration,
-        ApplicationDbContext dbContext)
+        ApplicationDbContext dbContext,
+        IAudioBlobStorage blobStorage)
     {
         _logger = logger;
         _dbContext = dbContext;
-        _connectionString = configuration["Storage:ConnectionString"] ??
-                            throw new InvalidOperationException("No connection string found");
+        _blobStorage = blobStorage;
     }
 
     public Task<List<AudioModel>> ListAllAudios()
@@ -48,8 +41,7 @@ public class FileService : IFileService
 
     public async Task<Stream> OpenAudioReadStreamAsync(Guid audioId)
     {
-        var blobClient = await BuildBlobClientAsync(audioId);
-        return await blobClient.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false));
+        return await _blobStorage.OpenReadAsync(audioId);
     }
 
     public async Task<bool> DeleteAudioAsync(Guid audioId)
@@ -57,8 +49,7 @@ public class FileService : IFileService
         var audioModel = await GetAudioAsync(audioId);
         if (audioModel == null) return false;
 
-        var blobClient = await BuildBlobClientAsync(audioId);
-        await blobClient.DeleteIfExistsAsync();
+        await _blobStorage.DeleteIfExistsAsync(audioId);
 
         _dbContext.AudioModels.Remove(audioModel);
         await _dbContext.SaveChangesAsync();
@@ -72,36 +63,12 @@ public class FileService : IFileService
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         var customTitle = BuildTitle(bookName, bookSeries, chapterTitle, chapterNumber);
 
-        var blobClient = await BuildBlobClientAsync(audioId);
         await using var stream = file.OpenReadStream();
-        var resp = await blobClient.UploadAsync(stream, new BlobUploadOptions
-        {
-            HttpHeaders = new BlobHttpHeaders
-            {
-                ContentType = file.ContentType
-            },
-            TransferOptions = new StorageTransferOptions
-            {
-                InitialTransferSize = BlobTransferChunkSize,
-                MaximumTransferSize = BlobTransferChunkSize,
-                MaximumConcurrency = 1
-            }
-        });
-        if (!resp.HasValue)
-        {
-            using var rawResponse = resp.GetRawResponse();
-            _logger.LogWarning("[audio-{AudioId}] File {FileName} could not be uploaded. Status: {Status}",
-                audioId, file.FileName, rawResponse.Status);
-            var errorMessage = $"[audio-{audioId}] Failed to upload file {file.FileName}. " +
-                               $"Info: '{resp.Value}'. " +
-                               $"Headers: [{string.Join("; ", rawResponse.Headers.Select(x => x.ToString()))}]. " +
-                               $"Status: '{rawResponse.Status}'";
-            throw new Exception(errorMessage);
-        }
+        var uploadResult = await _blobStorage.UploadAsync(audioId, stream, file.ContentType);
 
         _logger.LogInformation("[audio-{AudioId}] File {FileName} was uploaded successfully",
             audioId, file.FileName);
-        var valueContentHash = resp.Value.ContentHash;
+        var valueContentHash = uploadResult.ContentHash;
         if (valueContentHash == null)
         {
             _logger.LogWarning("[audio-{AudioId}] Uploaded blob hash is null, trying to calculate it (CanSeek={CanSeek})",
@@ -116,7 +83,7 @@ public class FileService : IFileService
         {
             Id = audioId,
             FileName = customTitle.ToString(),
-            FilePath = blobClient.Uri.ToString(),
+            FilePath = uploadResult.Uri.ToString(),
             FileSize = file.Length,
             FileHash = blobHash,
             Extension = extension,
@@ -131,21 +98,12 @@ public class FileService : IFileService
         }
         catch (DbException)
         {
-            await blobClient.DeleteIfExistsAsync();
+            await _blobStorage.DeleteIfExistsAsync(audioId);
             throw;
         }
 
         _logger.LogInformation("File {audioModel.FileName} uploaded successfully by {user.Email}", audioModel.FileName,
             user.Email);
-    }
-
-    private async Task<BlobClient> BuildBlobClientAsync(Guid audioId)
-    {
-        var blobServiceClient = new BlobServiceClient(_connectionString);
-        var containerClient = blobServiceClient.GetBlobContainerClient(ContainerName);
-        await containerClient.CreateIfNotExistsAsync();
-        var blobClient = containerClient.GetBlobClient(audioId.ToString());
-        return blobClient;
     }
 
     private static StringBuilder BuildTitle(

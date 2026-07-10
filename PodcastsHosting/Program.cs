@@ -1,3 +1,4 @@
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpLogging;
@@ -48,6 +49,14 @@ builder.Services.AddHttpLogging(options =>
     options.ResponseBodyLogLimit = 4096;
 });
 
+builder.Services.AddSingleton(serviceProvider =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var connectionString = configuration["Storage:ConnectionString"]
+                           ?? throw new InvalidOperationException("Storage:ConnectionString is not configured.");
+    return new BlobServiceClient(connectionString);
+});
+builder.Services.AddSingleton<IAudioBlobStorage, AudioBlobStorage>();
 builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddSingleton<PodcastFeedBuilder>();
 

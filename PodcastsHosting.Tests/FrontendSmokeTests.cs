@@ -1,6 +1,7 @@
 namespace PodcastsHosting.Tests;
 
 using System.Net;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -147,6 +148,11 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
+            builder.ConfigureAppConfiguration((_, configuration) =>
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Storage:ConnectionString"] = "UseDevelopmentStorage=true"
+                }));
 
             builder.ConfigureTestServices(services =>
             {
@@ -154,6 +160,15 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
                 services.AddScoped<IFileService, EmptyFileService>();
             });
         }
+    }
+
+    [Fact]
+    public void BlobServiceClient_IsReusedAsSingleton()
+    {
+        var first = _factory.Services.GetRequiredService<BlobServiceClient>();
+        var second = _factory.Services.GetRequiredService<BlobServiceClient>();
+
+        Assert.Same(first, second);
     }
 
     private sealed class EmptyFileService : IFileService
