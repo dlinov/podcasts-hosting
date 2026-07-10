@@ -202,20 +202,11 @@ public class HomeController : Controller
 
     private static string ChooseContentTypeByExtension(string? extension)
     {
-        return NormalizeExtension(extension) switch
-        {
-            ".mp3" => "audio/mpeg",
-            ".aac" => "audio/aac",
-            ".m4a" => "audio/mp4",
-            ".m4b" => "audio/mp4",
-            _ => "audio/mpeg"
-        };
+        return AudioFormats.GetByExtensionOrDefault(extension).ContentType;
     }
 
     private static string NormalizeExtension(string? extension)
     {
-        return string.IsNullOrWhiteSpace(extension)
-            ? ".mp3"
-            : extension.ToLowerInvariant();
+        return AudioFormats.GetByExtensionOrDefault(extension).Extension;
     }
 }

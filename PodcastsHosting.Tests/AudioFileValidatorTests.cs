@@ -6,6 +6,22 @@ using PodcastsHosting.Services;
 public class AudioFileValidatorTests
 {
     [Theory]
+    [InlineData(".mp3", "MP3", "audio/mpeg")]
+    [InlineData(".aac", "AAC", "audio/aac")]
+    [InlineData(".m4a", "M4A", "audio/mp4")]
+    [InlineData(".m4b", "M4B", "audio/mp4")]
+    public void AudioFormats_ProvidesCanonicalMetadata(string extension, string displayName, string contentType)
+    {
+        var format = AudioFormats.FindByExtension(extension);
+
+        Assert.NotNull(format);
+        Assert.Equal(displayName, format.DisplayName);
+        Assert.Equal(contentType, format.ContentType);
+        Assert.Contains(extension, AudioFormats.FileInputAccept);
+        Assert.Contains(contentType, AudioFormats.FileInputAccept);
+    }
+
+    [Theory]
     [InlineData("episode.mp3", "audio/mpeg", new byte[] { (byte)'I', (byte)'D', (byte)'3', 4 })]
     [InlineData("episode.mp3", "audio/mpeg", new byte[] { 0xff, 0xfb, 0x90, 0x64 })]
     [InlineData("episode.aac", "audio/aac", new byte[] { 0xff, 0xf1, 0x50, 0x80 })]

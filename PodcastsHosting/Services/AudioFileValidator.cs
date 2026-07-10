@@ -6,32 +6,6 @@ using System.Text;
 public static class AudioFileValidator
 {
     private const int HeaderBytesToRead = 512;
-    private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".mp3",
-        ".aac",
-        ".m4a",
-        ".m4b"
-    };
-
-    private static readonly HashSet<string> SupportedContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "application/mp4",
-        "application/octet-stream",
-        "audio/aac",
-        "audio/aacp",
-        "audio/m4a",
-        "audio/m4b",
-        "audio/mp3",
-        "audio/mp4",
-        "audio/mpeg",
-        "audio/x-aac",
-        "audio/x-m4a",
-        "audio/x-m4b",
-        "audio/x-mp3",
-        "audio/x-mpeg"
-    };
-
     private static readonly HashSet<string> SupportedIsoBaseMediaBrands = new(StringComparer.Ordinal)
     {
         "M4A ",
@@ -48,12 +22,13 @@ public static class AudioFileValidator
     public static async Task<string?> GetValidationErrorAsync(IFormFile file)
     {
         var extension = Path.GetExtension(file.FileName);
-        if (!SupportedExtensions.Contains(extension))
+        var format = AudioFormats.FindByExtension(extension);
+        if (format == null)
         {
-            return "Only MP3, AAC, M4A, and M4B audio files are supported.";
+            return $"Only {AudioFormats.SupportedDisplayNames} audio files are supported.";
         }
 
-        if (!string.IsNullOrWhiteSpace(file.ContentType) && !IsSupportedContentType(file.ContentType))
+        if (!string.IsNullOrWhiteSpace(file.ContentType) && !AudioFormats.IsSupportedUploadContentType(file.ContentType))
         {
             return "The uploaded file content type is not supported.";
         }
@@ -63,25 +38,18 @@ public static class AudioFileValidator
         var bytesRead = await stream.ReadAsync(header);
         var headerBytes = header.AsSpan(0, bytesRead);
 
-        return HasAudioSignature(extension, headerBytes)
+        return HasAudioSignature(format.SignatureKind, headerBytes)
             ? null
             : "The uploaded file does not look like a supported audio file.";
     }
 
-    private static bool IsSupportedContentType(string contentType)
+    private static bool HasAudioSignature(AudioSignatureKind signatureKind, ReadOnlySpan<byte> header)
     {
-        return contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase)
-               || SupportedContentTypes.Contains(contentType);
-    }
-
-    private static bool HasAudioSignature(string extension, ReadOnlySpan<byte> header)
-    {
-        return extension.ToLowerInvariant() switch
+        return signatureKind switch
         {
-            ".mp3" => HasMp3Signature(header),
-            ".aac" => HasAacSignature(header),
-            ".m4a" => HasIsoBaseMediaAudioSignature(header),
-            ".m4b" => HasIsoBaseMediaAudioSignature(header),
+            AudioSignatureKind.Mp3 => HasMp3Signature(header),
+            AudioSignatureKind.Aac => HasAacSignature(header),
+            AudioSignatureKind.IsoBaseMedia => HasIsoBaseMediaAudioSignature(header),
             _ => false
         };
     }

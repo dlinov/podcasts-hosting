@@ -20,7 +20,7 @@
     <div class="row g-3 align-items-end">
         <div class="col-md-3">
             <label for="file" class="form-label">Audio file</label>
-            <input type="file" class="form-control" id="file" name="file" accept=".mp3,.aac,.m4a,.m4b,audio/mpeg,audio/aac,audio/mp4" required />
+            <input type="file" class="form-control" id="file" name="file" accept="@PodcastsHosting.Services.AudioFormats.FileInputAccept" required />
         </div>
         <div class="col-md-3">
             <label for="bookName" class="form-label">Book Name</label>
