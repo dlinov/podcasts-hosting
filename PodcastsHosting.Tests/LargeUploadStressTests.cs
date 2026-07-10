@@ -113,8 +113,8 @@ public class LargeUploadStressTests : IClassFixture<LargeUploadStressTests.Large
             builder.ConfigureTestServices(services =>
             {
                 services.AddSingleton<LargeUploadProbe>();
-                services.RemoveAll<IFileService>();
-                services.AddScoped<IFileService, StreamingFileService>();
+                services.RemoveAll<IAudioService>();
+                services.AddScoped<IAudioService, StreamingAudioService>();
 
                 services.RemoveAll<UserManager<IdentityUser>>();
                 services.AddScoped<UserManager<IdentityUser>, TestUserManager>();
@@ -137,11 +137,11 @@ public class LargeUploadStressTests : IClassFixture<LargeUploadStressTests.Large
         }
     }
 
-    private sealed class StreamingFileService : IFileService
+    private sealed class StreamingAudioService : IAudioService
     {
         private readonly LargeUploadProbe _probe;
 
-        public StreamingFileService(LargeUploadProbe probe)
+        public StreamingAudioService(LargeUploadProbe probe)
         {
             _probe = probe;
         }

@@ -9,14 +9,14 @@ using Microsoft.EntityFrameworkCore;
 using PodcastsHosting.Data;
 using PodcastsHosting.Models;
 
-public class FileService : IFileService
+public class AudioService : IAudioService
 {
-    private readonly ILogger<FileService> _logger;
+    private readonly ILogger<AudioService> _logger;
     private readonly ApplicationDbContext _dbContext;
     private readonly IAudioBlobStorage _blobStorage;
 
-    public FileService(
-        ILogger<FileService> logger,
+    public AudioService(
+        ILogger<AudioService> logger,
         ApplicationDbContext dbContext,
         IAudioBlobStorage blobStorage)
     {

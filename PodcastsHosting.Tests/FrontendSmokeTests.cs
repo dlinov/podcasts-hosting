@@ -156,8 +156,8 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
 
             builder.ConfigureTestServices(services =>
             {
-                services.RemoveAll<IFileService>();
-                services.AddScoped<IFileService, EmptyFileService>();
+                services.RemoveAll<IAudioService>();
+                services.AddScoped<IAudioService, EmptyAudioService>();
             });
         }
     }
@@ -171,7 +171,7 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
         Assert.Same(first, second);
     }
 
-    private sealed class EmptyFileService : IFileService
+    private sealed class EmptyAudioService : IAudioService
     {
         public Task<List<AudioModel>> ListAllAudios()
         {

@@ -23,7 +23,7 @@ public class HomeControllerStreamingTests
     {
         var audioId = Guid.NewGuid();
         var audio = CreateAudio(audioId, ".MP3");
-        var controller = CreateController(new FakeFileService([audio], Encoding.ASCII.GetBytes("0123456789")));
+        var controller = CreateController(new FakeAudioService([audio], Encoding.ASCII.GetBytes("0123456789")));
 
         var result = await controller.Download(audioId);
 
@@ -39,7 +39,7 @@ public class HomeControllerStreamingTests
     {
         var audioId = Guid.NewGuid();
         var audio = CreateAudio(audioId, ".mp3");
-        var controller = CreateController(new FakeFileService([audio], Encoding.ASCII.GetBytes("0123456789")));
+        var controller = CreateController(new FakeAudioService([audio], Encoding.ASCII.GetBytes("0123456789")));
         var result = Assert.IsType<FileStreamResult>(await controller.Download(audioId));
         await using var responseBody = new MemoryStream();
         var actionContext = CreateActionContext(responseBody, "bytes=2-5");
@@ -57,7 +57,7 @@ public class HomeControllerStreamingTests
     {
         var audioId = Guid.NewGuid();
         var audio = CreateAudio(audioId, ".m4b");
-        var controller = CreateController(new FakeFileService([audio], Encoding.ASCII.GetBytes("0123456789")));
+        var controller = CreateController(new FakeAudioService([audio], Encoding.ASCII.GetBytes("0123456789")));
 
         var result = await controller.Download(audioId, download: true);
 
@@ -72,7 +72,7 @@ public class HomeControllerStreamingTests
     {
         var audioId = Guid.NewGuid();
         var audio = CreateAudio(audioId, ".aac");
-        var controller = CreateController(new FakeFileService([audio], Encoding.ASCII.GetBytes("0123456789")));
+        var controller = CreateController(new FakeAudioService([audio], Encoding.ASCII.GetBytes("0123456789")));
 
         var result = await controller.Download(audioId);
 
@@ -85,7 +85,7 @@ public class HomeControllerStreamingTests
     {
         var audioId = Guid.NewGuid();
         var audio = CreateAudio(audioId, ".m4b");
-        var controller = CreateController(new FakeFileService([audio], Encoding.ASCII.GetBytes("0123456789")));
+        var controller = CreateController(new FakeAudioService([audio], Encoding.ASCII.GetBytes("0123456789")));
 
         var result = await controller.Rss();
 
@@ -97,7 +97,7 @@ public class HomeControllerStreamingTests
         Assert.Equal(audio.FileSize.ToString(), enclosure.Attribute("length")?.Value);
     }
 
-    private static HomeController CreateController(IFileService fileService)
+    private static HomeController CreateController(IAudioService audioService)
     {
         var podcastOptions = Options.Create(new PodcastOptions
         {
@@ -113,7 +113,7 @@ public class HomeControllerStreamingTests
         return new HomeController(
             NullLogger<HomeController>.Instance,
             userManager: null!,
-            fileService,
+            audioService,
             new PodcastFeedBuilder(podcastOptions))
         {
             ControllerContext = new ControllerContext
@@ -159,12 +159,12 @@ public class HomeControllerStreamingTests
         };
     }
 
-    private sealed class FakeFileService : IFileService
+    private sealed class FakeAudioService : IAudioService
     {
         private readonly List<AudioModel> _audioModels;
         private readonly byte[] _content;
 
-        public FakeFileService(List<AudioModel> audioModels, byte[] content)
+        public FakeAudioService(List<AudioModel> audioModels, byte[] content)
         {
             _audioModels = audioModels;
             _content = content;

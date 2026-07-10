@@ -57,7 +57,7 @@ builder.Services.AddSingleton(serviceProvider =>
     return new BlobServiceClient(connectionString);
 });
 builder.Services.AddSingleton<IAudioBlobStorage, AudioBlobStorage>();
-builder.Services.AddScoped<IFileService, FileService>();
+builder.Services.AddScoped<IAudioService, AudioService>();
 builder.Services.AddSingleton<PodcastFeedBuilder>();
 
 // Configure the maximum request body size

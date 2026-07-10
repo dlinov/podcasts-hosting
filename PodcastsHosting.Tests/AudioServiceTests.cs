@@ -8,7 +8,7 @@ using PodcastsHosting.Data;
 using PodcastsHosting.Models;
 using PodcastsHosting.Services;
 
-public class FileServiceTests
+public class AudioServiceTests
 {
     [Fact]
     public async Task ListAllAudios_IncludesUploaderAfterTrackingIsCleared()
@@ -37,7 +37,7 @@ public class FileServiceTests
         });
         await dbContext.SaveChangesAsync();
         dbContext.ChangeTracker.Clear();
-        var service = new FileService(NullLogger<FileService>.Instance, dbContext, new StubAudioBlobStorage());
+        var service = new AudioService(NullLogger<AudioService>.Instance, dbContext, new StubAudioBlobStorage());
 
         var audio = Assert.Single(await service.ListAllAudios());
 
@@ -60,7 +60,7 @@ public class FileServiceTests
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync();
         var blobStorage = new RecordingAudioBlobStorage();
-        var service = new FileService(NullLogger<FileService>.Instance, dbContext, blobStorage);
+        var service = new AudioService(NullLogger<AudioService>.Instance, dbContext, blobStorage);
         var content = new byte[] { (byte)'I', (byte)'D', (byte)'3', 4 };
         var file = new FormFile(new MemoryStream(content), 0, content.Length, "file", "episode.mp3")
         {
@@ -99,7 +99,7 @@ public class FileServiceTests
         });
         await dbContext.SaveChangesAsync();
         var blobStorage = new RecordingAudioBlobStorage();
-        var service = new FileService(NullLogger<FileService>.Instance, dbContext, blobStorage);
+        var service = new AudioService(NullLogger<AudioService>.Instance, dbContext, blobStorage);
 
         var deleted = await service.DeleteAudioAsync(audioId);
 

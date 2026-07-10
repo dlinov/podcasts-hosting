@@ -3,7 +3,7 @@ namespace PodcastsHosting.Services;
 using Microsoft.AspNetCore.Identity;
 using PodcastsHosting.Models;
 
-public interface IFileService
+public interface IAudioService
 {
     Task<List<AudioModel>> ListAllAudios();
 
