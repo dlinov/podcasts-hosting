@@ -40,7 +40,10 @@ public class LargeUploadStressTests : IClassFixture<LargeUploadStressTests.Large
         });
         using var multipartContent = CreateMultipartContent(uploadSizeBytes);
 
-        using var response = await client.PostAsync("/Home/Upload", multipartContent);
+        using var response = await client.PostAsync(
+            "/Home/Upload",
+            multipartContent,
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(uploadSizeBytes, probe.UploadedBytes);
@@ -50,10 +53,9 @@ public class LargeUploadStressTests : IClassFixture<LargeUploadStressTests.Large
     [Trait("Category", "Stress")]
     public async Task Upload_LargeFile_WhenStressTestEnabled_CompletesWithoutOutOfMemory()
     {
-        if (!IsStressTestEnabled())
-        {
-            return;
-        }
+        Assert.SkipUnless(
+            IsStressTestEnabled(),
+            "Set RUN_LARGE_UPLOAD_TESTS=true to run the large upload stress test.");
 
         if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("DOTNET_GCHeapHardLimit"))
             && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("DOTNET_GCHeapHardLimitPercent")))
@@ -71,7 +73,10 @@ public class LargeUploadStressTests : IClassFixture<LargeUploadStressTests.Large
         client.Timeout = TimeSpan.FromMinutes(5);
 
         using var multipartContent = CreateMultipartContent(uploadSizeBytes);
-        using var response = await client.PostAsync("/Home/Upload", multipartContent);
+        using var response = await client.PostAsync(
+            "/Home/Upload",
+            multipartContent,
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(uploadSizeBytes, probe.UploadedBytes);

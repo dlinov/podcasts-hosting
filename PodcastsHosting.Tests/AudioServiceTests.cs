@@ -13,6 +13,7 @@ public class AudioServiceTests
     [Fact]
     public async Task ListAllAudios_IncludesUploaderAfterTrackingIsCleared()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase($"file-service-{Guid.NewGuid()}")
             .Options;
@@ -35,7 +36,7 @@ public class AudioServiceTests
             Extension = ".mp3",
             UploadUserId = user.Id
         });
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync(cancellationToken);
         dbContext.ChangeTracker.Clear();
         var service = new AudioService(NullLogger<AudioService>.Instance, dbContext, new StubAudioBlobStorage());
 
@@ -47,6 +48,7 @@ public class AudioServiceTests
     [Fact]
     public async Task UploadAudioAsync_PersistsBlobResultAndMetadata()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase($"file-service-{Guid.NewGuid()}")
             .Options;
@@ -58,7 +60,7 @@ public class AudioServiceTests
             UserName = "uploader@example.com"
         };
         dbContext.Users.Add(user);
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync(cancellationToken);
         var blobStorage = new RecordingAudioBlobStorage();
         var service = new AudioService(NullLogger<AudioService>.Instance, dbContext, blobStorage);
         var content = new byte[] { (byte)'I', (byte)'D', (byte)'3', 4 };
@@ -70,7 +72,7 @@ public class AudioServiceTests
 
         await service.UploadAudioAsync(user, file, "Book", "Series", "Chapter", 1);
 
-        var audio = Assert.Single(await dbContext.AudioModels.AsNoTracking().ToListAsync());
+        var audio = Assert.Single(await dbContext.AudioModels.AsNoTracking().ToListAsync(cancellationToken));
         Assert.Equal(blobStorage.UploadedAudioId, audio.Id);
         Assert.Equal($"https://storage.example/{audio.Id}", audio.FilePath);
         Assert.Equal(Convert.ToBase64String(blobStorage.ContentHash), audio.FileHash);
@@ -82,6 +84,7 @@ public class AudioServiceTests
     [Fact]
     public async Task DeleteAudioAsync_DeletesBlobAndMetadata()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase($"file-service-{Guid.NewGuid()}")
             .Options;
@@ -97,7 +100,7 @@ public class AudioServiceTests
             UploadTime = DateTime.UtcNow,
             Extension = ".mp3"
         });
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync(cancellationToken);
         var blobStorage = new RecordingAudioBlobStorage();
         var service = new AudioService(NullLogger<AudioService>.Instance, dbContext, blobStorage);
 
@@ -105,7 +108,7 @@ public class AudioServiceTests
 
         Assert.True(deleted);
         Assert.Equal(audioId, blobStorage.DeletedAudioId);
-        Assert.Empty(await dbContext.AudioModels.ToListAsync());
+        Assert.Empty(await dbContext.AudioModels.ToListAsync(cancellationToken));
     }
 
     private sealed class RecordingAudioBlobStorage : IAudioBlobStorage

@@ -1,0 +1,14 @@
+name: Pull request validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate
+    uses: ./.github/workflows/test-validation-template.yml
