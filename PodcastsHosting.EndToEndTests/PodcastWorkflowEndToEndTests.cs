@@ -7,7 +7,7 @@ using System.Xml.Linq;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using Azure.Storage.Blobs;
-using Xunit.Abstractions;
+using Xunit;
 using Xunit.Sdk;
 
 public class PodcastWorkflowEndToEndTests
@@ -23,10 +23,9 @@ public class PodcastWorkflowEndToEndTests
     [Trait("Category", "DockerE2E")]
     public async Task CompletePodcastWorkflow_UsesCleanDatabaseAndStorage()
     {
-        if (!IsEnabled())
-        {
-            return;
-        }
+        Assert.SkipUnless(
+            IsEnabled(),
+            "Set RUN_DOCKER_E2E_TESTS=true to run the Docker Compose end-to-end test.");
 
         await using var environment = await DockerComposeEnvironment.StartAsync(_output);
         try

@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
-using Xunit.Abstractions;
+using Xunit;
 
 internal sealed class DockerComposeEnvironment : IAsyncDisposable
 {

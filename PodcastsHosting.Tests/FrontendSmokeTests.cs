@@ -32,7 +32,7 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
     {
         using var client = _factory.CreateClient();
 
-        using var response = await client.GetAsync(path);
+        using var response = await client.GetAsync(path, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("text/html", response.Content.Headers.ContentType?.MediaType);
@@ -69,7 +69,9 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
     {
         using var client = _factory.CreateClient();
 
-        var html = await client.GetStringAsync("/Identity/Account/Login");
+        var html = await client.GetStringAsync(
+            "/Identity/Account/Login",
+            TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain("Register as a new user", html);
     }
@@ -82,7 +84,9 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
             AllowAutoRedirect = false
         });
 
-        using var response = await client.GetAsync("/Identity/Account/Register");
+        using var response = await client.GetAsync(
+            "/Identity/Account/Register",
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/", response.Headers.Location?.OriginalString);
@@ -93,7 +97,7 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
     {
         using var client = _factory.CreateClient();
 
-        var html = await client.GetStringAsync("/");
+        var html = await client.GetStringAsync("/", TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain("Home/Privacy", html);
         Assert.DoesNotContain(">Privacy<", html);
@@ -104,10 +108,11 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
     [InlineData("/health/live")]
     public async Task LivenessHealthCheck_ReturnsHealthy(string path)
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         using var client = _factory.CreateClient();
 
-        using var response = await client.GetAsync(path);
-        var content = await response.Content.ReadAsStringAsync();
+        using var response = await client.GetAsync(path, cancellationToken);
+        var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Healthy", content);
@@ -136,7 +141,7 @@ public class FrontendSmokeTests : IClassFixture<FrontendSmokeTests.FrontendSmoke
     {
         using var client = _factory.CreateClient();
 
-        using var response = await client.GetAsync(path);
+        using var response = await client.GetAsync(path, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(expectedMediaType, response.Content.Headers.ContentType?.MediaType);
