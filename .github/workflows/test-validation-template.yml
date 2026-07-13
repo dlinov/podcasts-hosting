@@ -68,6 +68,6 @@ jobs:
       - name: Run Docker Compose end-to-end tests
         env:
           RUN_DOCKER_E2E_TESTS: 'true'
-          DOCKER_E2E_UPLOAD_SIZES_MB: '10,64,128'
+          DOCKER_E2E_UPLOAD_SIZES_MB: '10,128,512'
           TESTINGPLATFORM_TELEMETRY_OPTOUT: '1'
         run: dotnet test --project PodcastsHosting.EndToEndTests/PodcastsHosting.EndToEndTests.csproj --configuration Release
