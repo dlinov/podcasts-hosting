@@ -69,6 +69,24 @@ Remove local compose data volumes:
 docker compose down -v
 ```
 
+### Docker end-to-end test
+Run the opt-in test against a fresh SQL Server, Azurite, and application stack:
+```
+RUN_DOCKER_E2E_TESTS=true \
+dotnet test PodcastsHosting.EndToEndTests/PodcastsHosting.EndToEndTests.csproj
+```
+
+The test generates and uploads 10 MiB, 128 MiB, and 512 MiB audio streams without creating source files on disk. It covers registration, a separate login, authenticated access, every upload-list column, RSS enclosures, Azurite blob metadata, byte-for-byte full downloads, HTTP range streaming, and attachment headers.
+
+Each run uses a unique Compose project, random host ports and credentials, and fresh named volumes. The test captures container diagnostics on failure and runs `docker compose down --volumes --remove-orphans --rmi local` during teardown, including when an assertion fails.
+
+Override all three generated sizes for a faster workflow check:
+```
+RUN_DOCKER_E2E_TESTS=true \
+DOCKER_E2E_UPLOAD_SIZES_MB=1,2,3 \
+dotnet test PodcastsHosting.EndToEndTests/PodcastsHosting.EndToEndTests.csproj
+```
+
 ### Frontend libraries
 Frontend browser libraries are managed with [LibMan](https://learn.microsoft.com/aspnet/core/client-side/libman/) using the local dotnet tool manifest in `.config/dotnet-tools.json` and the pinned manifest at `PodcastsHosting/libman.json`.
 
