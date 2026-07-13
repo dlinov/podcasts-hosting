@@ -76,7 +76,7 @@ RUN_DOCKER_E2E_TESTS=true \
 dotnet test --project PodcastsHosting.EndToEndTests/PodcastsHosting.EndToEndTests.csproj
 ```
 
-The test generates and uploads 10 MiB, 64 MiB, and 128 MiB audio streams without creating source files on disk. It covers registration, a separate login, authenticated access, every upload-list column, RSS enclosures, Azurite blob metadata, byte-for-byte full downloads, HTTP range streaming, and attachment headers.
+The test generates and uploads 10 MiB, 128 MiB, and 512 MiB audio streams without creating source files on disk. It covers registration, a separate login, authenticated access, every upload-list column, RSS enclosures, Azurite blob metadata, byte-for-byte full downloads, HTTP range streaming, and attachment headers.
 
 Each run uses a unique Compose project, random host ports and credentials, and fresh named volumes. The test captures container diagnostics on failure and runs `docker compose down --volumes --remove-orphans --rmi local` during teardown, including when an assertion fails.
 
