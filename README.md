@@ -73,10 +73,10 @@ docker compose down -v
 Run the opt-in test against a fresh SQL Server, Azurite, and application stack:
 ```
 RUN_DOCKER_E2E_TESTS=true \
-dotnet test PodcastsHosting.EndToEndTests/PodcastsHosting.EndToEndTests.csproj
+dotnet test --project PodcastsHosting.EndToEndTests/PodcastsHosting.EndToEndTests.csproj
 ```
 
-The test generates and uploads 10 MiB, 128 MiB, and 512 MiB audio streams without creating source files on disk. It covers registration, a separate login, authenticated access, every upload-list column, RSS enclosures, Azurite blob metadata, byte-for-byte full downloads, HTTP range streaming, and attachment headers.
+The test generates and uploads 10 MiB, 64 MiB, and 128 MiB audio streams without creating source files on disk. It covers registration, a separate login, authenticated access, every upload-list column, RSS enclosures, Azurite blob metadata, byte-for-byte full downloads, HTTP range streaming, and attachment headers.
 
 Each run uses a unique Compose project, random host ports and credentials, and fresh named volumes. The test captures container diagnostics on failure and runs `docker compose down --volumes --remove-orphans --rmi local` during teardown, including when an assertion fails.
 
@@ -84,7 +84,7 @@ Override all three generated sizes for a faster workflow check:
 ```
 RUN_DOCKER_E2E_TESTS=true \
 DOCKER_E2E_UPLOAD_SIZES_MB=1,2,3 \
-dotnet test PodcastsHosting.EndToEndTests/PodcastsHosting.EndToEndTests.csproj
+dotnet test --project PodcastsHosting.EndToEndTests/PodcastsHosting.EndToEndTests.csproj
 ```
 
 ### Frontend libraries
@@ -116,7 +116,15 @@ To upgrade a library, edit the version in `PodcastsHosting/libman.json`, restore
 cd PodcastsHosting
 dotnet tool run libman -- restore --verbosity minimal
 cd ..
-dotnet test PodcastsHosting.slnx
+dotnet test --solution PodcastsHosting.slnx
+```
+
+Tests run on Microsoft Testing Platform v2, selected for the .NET 10 SDK by `global.json`. Generate Cobertura coverage for the regular test project with:
+```
+dotnet test --project PodcastsHosting.Tests/PodcastsHosting.Tests.csproj \
+	--coverage \
+	--coverage-output-format cobertura \
+	--coverage-output podcasts-hosting.cobertura.xml
 ```
 
 ### Large upload stress test
@@ -125,7 +133,8 @@ The normal test suite does not upload a large file. To check large multipart upl
 ```
 RUN_LARGE_UPLOAD_TESTS=true \
 DOTNET_GCHeapHardLimit=0x18000000 \
-dotnet test PodcastsHosting.Tests/PodcastsHosting.Tests.csproj --filter FullyQualifiedName~LargeUploadStressTests
+dotnet test --project PodcastsHosting.Tests/PodcastsHosting.Tests.csproj \
+	--filter-class PodcastsHosting.Tests.LargeUploadStressTests
 ```
 
 The default generated upload size is 220 MiB. Override it for quick local validation:
@@ -133,7 +142,8 @@ The default generated upload size is 220 MiB. Override it for quick local valida
 RUN_LARGE_UPLOAD_TESTS=true \
 LARGE_UPLOAD_SIZE_MB=16 \
 DOTNET_GCHeapHardLimit=0x18000000 \
-dotnet test PodcastsHosting.Tests/PodcastsHosting.Tests.csproj --filter FullyQualifiedName~LargeUploadStressTests
+dotnet test --project PodcastsHosting.Tests/PodcastsHosting.Tests.csproj \
+	--filter-class PodcastsHosting.Tests.LargeUploadStressTests
 ```
 
 This test uses a generated stream instead of storing the test file on disk and a fake upload service that drains the uploaded file stream to `Stream.Null`. Because `WebApplicationFactory` hosts the app in the test process, the heap limit applies to the test process and app together.

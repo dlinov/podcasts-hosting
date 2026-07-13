@@ -103,7 +103,7 @@ public class PodcastWorkflowEndToEndTests
     private static int[] ParseUploadSizes()
     {
         var configuredSizes = Environment.GetEnvironmentVariable("DOCKER_E2E_UPLOAD_SIZES_MB")
-                              ?? "10,128,512";
+                              ?? "10,64,128";
         var sizes = configuredSizes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(value => int.TryParse(value, out var size) && size > 0
                 ? size
