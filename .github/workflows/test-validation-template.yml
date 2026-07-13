@@ -1,0 +1,71 @@
+name: Test validation template
+
+on:
+  workflow_call:
+    inputs:
+      upload_deployment_artifact:
+        description: Publish and upload the application for deployment
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Restore frontend libraries
+        working-directory: PodcastsHosting
+        run: dotnet tool run libman -- restore --verbosity minimal
+
+      - name: Build with dotnet
+        run: dotnet build PodcastsHosting.slnx --configuration Release
+
+      - name: Test with dotnet
+        run: dotnet test --solution PodcastsHosting.slnx --configuration Release --no-build --no-restore
+
+      - name: Publish application
+        if: inputs.upload_deployment_artifact
+        run: dotnet publish PodcastsHosting/PodcastsHosting.csproj --configuration Release --output ${{ runner.temp }}/podcasts-hosting
+
+      - name: Upload deployment artifact
+        if: inputs.upload_deployment_artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: .net-app
+          path: ${{ runner.temp }}/podcasts-hosting
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.x'
+
+      - name: Verify Docker Compose
+        run: docker compose version
+
+      - name: Run Docker Compose end-to-end tests
+        env:
+          RUN_DOCKER_E2E_TESTS: 'true'
+          DOCKER_E2E_UPLOAD_SIZES_MB: '10,64,128'
+          TESTINGPLATFORM_TELEMETRY_OPTOUT: '1'
+        run: dotnet test --project PodcastsHosting.EndToEndTests/PodcastsHosting.EndToEndTests.csproj --configuration Release
