@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   build:
+    name: Build and unit tests
     runs-on: ubuntu-latest
 
     steps:
@@ -49,6 +50,7 @@ jobs:
           path: ${{ runner.temp }}/podcasts-hosting
 
   e2e:
+    name: Docker Compose E2E
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
